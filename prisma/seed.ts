@@ -1,110 +1,66 @@
+import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Seed tipos de espacio
-  const tipos = await Promise.all([
-    prisma.tipoEspacio.upsert({
-      where: { id: 1 },
+  // Seed tipos de espacio (secuencial para respetar autoincrement)
+  const tiposData = [
+    { id: 1, nombre: "Aulas" },
+    { id: 2, nombre: "Baños" },
+    { id: 3, nombre: "Laboratorios" },
+    { id: 4, nombre: "Áreas Comunes" },
+    { id: 5, nombre: "Oficinas" },
+  ];
+  const tipos = [];
+  for (const t of tiposData) {
+    const item = await prisma.tipoEspacio.upsert({
+      where: { id: t.id },
       update: {},
-      create: { nombre: "Aulas" },
-    }),
-    prisma.tipoEspacio.upsert({
-      where: { id: 2 },
-      update: {},
-      create: { nombre: "Baños" },
-    }),
-    prisma.tipoEspacio.upsert({
-      where: { id: 3 },
-      update: {},
-      create: { nombre: "Laboratorios" },
-    }),
-    prisma.tipoEspacio.upsert({
-      where: { id: 4 },
-      update: {},
-      create: { nombre: "Áreas Comunes" },
-    }),
-    prisma.tipoEspacio.upsert({
-      where: { id: 5 },
-      update: {},
-      create: { nombre: "Oficinas" },
-    }),
-  ]);
+      create: t,
+    });
+    tipos.push(item);
+  }
 
-  // Seed grupos (edificios)
-  const grupos = await Promise.all([
-    prisma.grupo.upsert({
-      where: { id: 1 },
+  // Seed grupos (secuencial para respetar autoincrement)
+  const gruposData = [
+    { id: 1, nombre: "Edificio A" },
+    { id: 2, nombre: "Edificio B" },
+    { id: 3, nombre: "Edificio C" },
+    { id: 4, nombre: "Pabellón Principal" },
+  ];
+  const grupos = [];
+  for (const g of gruposData) {
+    const item = await prisma.grupo.upsert({
+      where: { id: g.id },
       update: {},
-      create: { nombre: "Edificio A" },
-    }),
-    prisma.grupo.upsert({
-      where: { id: 2 },
-      update: {},
-      create: { nombre: "Edificio B" },
-    }),
-    prisma.grupo.upsert({
-      where: { id: 3 },
-      update: {},
-      create: { nombre: "Edificio C" },
-    }),
-    prisma.grupo.upsert({
-      where: { id: 4 },
-      update: {},
-      create: { nombre: "Pabellón Principal" },
-    }),
-  ]);
+      create: g,
+    });
+    grupos.push(item);
+  }
 
-  // Seed espacios
-  const espacios = await Promise.all([
-    prisma.espacio.upsert({
-      where: { id: 1 },
+  // Seed espacios (secuencial para respetar foreign keys)
+  const espaciosData = [
+    { id: 1, espacio: "Aula 101", idGrupo: 1, idTipoEspacio: 1 },
+    { id: 2, espacio: "Aula 102", idGrupo: 1, idTipoEspacio: 1 },
+    { id: 3, espacio: "Aula 201", idGrupo: 2, idTipoEspacio: 1 },
+    { id: 4, espacio: "Baño Planta Baja", idGrupo: 1, idTipoEspacio: 2 },
+    { id: 5, espacio: "Baño Segundo Piso", idGrupo: 2, idTipoEspacio: 2 },
+    { id: 6, espacio: "Lab. Cómputo", idGrupo: 3, idTipoEspacio: 3 },
+    { id: 7, espacio: "Lab. Ciencias", idGrupo: 3, idTipoEspacio: 3 },
+    { id: 8, espacio: "Patio Central", idGrupo: 4, idTipoEspacio: 4 },
+    { id: 9, espacio: "Dirección", idGrupo: 4, idTipoEspacio: 5 },
+  ];
+  const espacios = [];
+  for (const e of espaciosData) {
+    const item = await prisma.espacio.upsert({
+      where: { id: e.id },
       update: {},
-      create: { espacio: "Aula 101", idGrupo: 1, idTipoEspacio: 1 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 2 },
-      update: {},
-      create: { espacio: "Aula 102", idGrupo: 1, idTipoEspacio: 1 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 3 },
-      update: {},
-      create: { espacio: "Aula 201", idGrupo: 2, idTipoEspacio: 1 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 4 },
-      update: {},
-      create: { espacio: "Baño Planta Baja", idGrupo: 1, idTipoEspacio: 2 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 5 },
-      update: {},
-      create: { espacio: "Baño Segundo Piso", idGrupo: 2, idTipoEspacio: 2 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 6 },
-      update: {},
-      create: { espacio: "Lab. Cómputo", idGrupo: 3, idTipoEspacio: 3 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 7 },
-      update: {},
-      create: { espacio: "Lab. Ciencias", idGrupo: 3, idTipoEspacio: 3 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 8 },
-      update: {},
-      create: { espacio: "Patio Central", idGrupo: 4, idTipoEspacio: 4 },
-    }),
-    prisma.espacio.upsert({
-      where: { id: 9 },
-      update: {},
-      create: { espacio: "Dirección", idGrupo: 4, idTipoEspacio: 5 },
-    }),
-  ]);
+      create: e,
+    });
+    espacios.push(item);
+  }
 
   // Seed usuarios
   const adminPassword = await bcrypt.hash("admin123", 10);
