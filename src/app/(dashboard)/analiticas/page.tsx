@@ -1,8 +1,14 @@
-export default function AnaliticasPage() {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">Analíticas</h1>
-      <p className="text-muted-foreground">Próximamente disponible.</p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { fetchAnaliticasData, presetRange } from "@/lib/analiticas";
+import { AnaliticasClient } from "@/components/analiticas/AnaliticasClient";
+
+export default async function AnaliticasPage() {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
+
+  const { desde, hasta } = presetRange("30d");
+  const initialData = await fetchAnaliticasData(desde, hasta);
+
+  return <AnaliticasClient initialData={initialData} />;
 }
