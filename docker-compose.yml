@@ -1,15 +1,16 @@
 services:
   db:
-    image: postgres:16
+    image: mysql:8
     restart: unless-stopped
     environment:
-      POSTGRES_USER: faciltrack
-      POSTGRES_PASSWORD: faciltrack
-      POSTGRES_DB: faciltrack
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: faciltrack
+      MYSQL_USER: faciltrack
+      MYSQL_PASSWORD: faciltrack
     ports:
-      - "5432:5432"
+      - "3307:3306"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
 
 volumes:
-  pgdata:
+  mysqldata:

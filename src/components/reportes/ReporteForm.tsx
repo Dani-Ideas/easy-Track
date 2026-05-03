@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,61 +9,62 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { reporteFormSchema, type ReporteFormValues } from "@/lib/validations/reporte.schema";
+import { reporteFormSchema, type CategoriaEvaluacion, type ReporteFormValues } from "@/lib/validations/reporte.schema";
 import { useReporteFormStore } from "@/store/useReporteFormStore";
 import { DraftBanner } from "./DraftBanner";
 import { InfoGeneralSection } from "./sections/InfoGeneralSection";
-import { UbicacionSection } from "./sections/UbicacionSection";
+import { LocationPicker } from "./sections/LocationPicker";
 import { EvaluacionSection } from "./sections/EvaluacionSection";
 import { ComentariosSection } from "./sections/ComentariosSection";
-import { ImageUploadSection } from "./sections/ImageUploadSection";
+import { useIdentidad } from "@/components/layout/IdentidadGuard";
 
 export function ReporteForm() {
   const router = useRouter();
   const { hasDraft, draft, saveDraft, clearDraft } = useReporteFormStore();
   const [submitting, setSubmitting] = useState(false);
+  const [categoriaEvaluacion, setCategoriaEvaluacion] = useState<CategoriaEvaluacion | null>(null);
+  const identidad = useIdentidad();
 
   const form = useForm<ReporteFormValues>({
     resolver: zodResolver(reporteFormSchema),
     defaultValues: {
-      nombreSolicitante: "",
+      nombreSolicitante: identidad ?? "",
       fechaInspeccion: new Date().toISOString().split("T")[0],
       tipoUbicacion: "",
       idEspacio: 0,
       descripcion: "",
-      evaluacion: {
-        limpieza: 0,
-        seguridad: 0,
-        iluminacion: false,
-        equipo: false,
-      },
-      urlImagenes: [],
+      evaluacion: {},
     },
   });
 
   function restoreDraft() {
     if (!draft) return;
+    setCategoriaEvaluacion(draft.categoriaEvaluacion);
     form.reset({
       nombreSolicitante: draft.nombreSolicitante,
-      fechaInspeccion: draft.fechaInspeccion || new Date().toISOString().split("T")[0],
-      tipoUbicacion: draft.tipoUbicacion,
-      idEspacio: draft.idEspacio ?? 0,
-      descripcion: draft.descripcion,
-      evaluacion: draft.evaluacion,
-      urlImagenes: draft.imageUrls,
+      fechaInspeccion:   draft.fechaInspeccion || new Date().toISOString().split("T")[0],
+      tipoUbicacion:     draft.tipoUbicacion,
+      idEspacio:         draft.idEspacio ?? 0,
+      descripcion:       draft.descripcion,
+      evaluacion:        draft.evaluacion,
     });
+  }
+
+  function handleCategoriaChange(cat: CategoriaEvaluacion | null) {
+    setCategoriaEvaluacion(cat);
+    form.setValue("evaluacion", {});
   }
 
   function handleSaveDraft() {
     const values = form.getValues();
     saveDraft({
-      nombreSolicitante: values.nombreSolicitante,
-      fechaInspeccion: values.fechaInspeccion,
-      tipoUbicacion: values.tipoUbicacion,
-      idEspacio: values.idEspacio,
-      descripcion: values.descripcion ?? "",
-      evaluacion: values.evaluacion,
-      imageUrls: values.urlImagenes ?? [],
+      nombreSolicitante:   values.nombreSolicitante,
+      fechaInspeccion:     values.fechaInspeccion,
+      tipoUbicacion:       values.tipoUbicacion,
+      idEspacio:           values.idEspacio,
+      descripcion:         values.descripcion ?? "",
+      categoriaEvaluacion,
+      evaluacion:          values.evaluacion,
     });
   }
 
@@ -93,26 +94,16 @@ export function ReporteForm() {
           <CardContent className="pt-6 space-y-8">
             <InfoGeneralSection form={form} />
             <Separator />
-            <UbicacionSection form={form} />
+            <LocationPicker form={form} onCategoriaChange={handleCategoriaChange} />
             <Separator />
-            <EvaluacionSection form={form} />
+            <EvaluacionSection form={form} categoria={categoriaEvaluacion} />
             <Separator />
             <ComentariosSection form={form} />
-            <Separator />
-            <ImageUploadSection
-              value={form.watch("urlImagenes") ?? []}
-              onChange={(urls) => form.setValue("urlImagenes", urls)}
-            />
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSaveDraft}
-            className="gap-2"
-          >
+          <Button type="button" variant="outline" onClick={handleSaveDraft} className="gap-2">
             <Save className="h-4 w-4" />
             Guardar borrador
           </Button>
