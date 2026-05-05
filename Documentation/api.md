@@ -35,7 +35,6 @@ Lista paginada de reportes. Solo retorna reportes que no son borradores (`isDraf
       "tipoUbicacion": "Aulas",
       "estado": "PENDIENTE",
       "descripcion": "Luminaria dañada",
-      "urlImagenes": [],
       "espacio": {
         "espacio": "Aula 101",
         "grupo": { "nombre": "Edificio A" },
@@ -69,7 +68,6 @@ Crea un nuevo reporte.
     "iluminacion": false,
     "equipo": true
   },
-  "urlImagenes": ["https://res.cloudinary.com/..."],
   "isDraft": false
 }
 ```
@@ -96,7 +94,6 @@ Retorna un reporte por ID con todas sus relaciones.
   "fechaAtencion": null,
   "fechaResolucion": null,
   "evaluacion": { "limpieza": 4, "seguridad": 3, "iluminacion": false, "equipo": true },
-  "urlImagenes": [],
   "espacio": {
     "espacio": "Aula 101",
     "grupo": { "id": 1, "nombre": "Edificio A" },
@@ -224,38 +221,6 @@ Retorna métricas para las tarjetas del dashboard.
 ```
 
 `atendidosRecientes` = reportes atendidos en los últimos 7 días.
-
----
-
-## Upload
-
-### `POST /api/upload`
-
-Genera una firma para subir una imagen directamente a Cloudinary desde el cliente.
-
-**Body:**
-```json
-{
-  "folder": "faciltrack/reportes",
-  "publicId": "opcional-id-personalizado"
-}
-```
-
-**Respuesta:**
-```json
-{
-  "uploadUrl": "https://api.cloudinary.com/v1_1/[cloud]/image/upload",
-  "signature": "sha1-hash",
-  "apiKey": "tu-api-key",
-  "timestamp": 1711700000,
-  "folder": "faciltrack/reportes",
-  "cloudName": "tu-cloud-name"
-}
-```
-
-El cliente usa estos datos para hacer un `POST multipart/form-data` directamente a Cloudinary sin pasar los archivos por el servidor Next.js.
-
-> Si Cloudinary no está configurado (en desarrollo), retorna `uploadUrl: undefined` y el cliente usa `URL.createObjectURL()` como fallback.
 
 ---
 

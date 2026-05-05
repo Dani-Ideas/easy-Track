@@ -15,7 +15,6 @@ interface ReporteFormDraft {
   idEspacio: number | null;
   descripcion: string;
   evaluacion: EvaluacionDraft;
-  imageUrls: string[];
   lastSaved: string | null;
 }
 
@@ -47,7 +46,6 @@ export const useReporteFormStore = create<ReporteFormStore>()(
           idEspacio: null,
           descripcion: "",
           evaluacion: defaultEvaluacion,
-          imageUrls: [],
           lastSaved: null,
         };
         set({

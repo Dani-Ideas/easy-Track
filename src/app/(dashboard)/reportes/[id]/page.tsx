@@ -10,7 +10,6 @@ import { PageBreadcrumb } from "@/components/layout/Breadcrumb";
 import { ReporteHeader } from "@/components/detalle/ReporteHeader";
 import { InfoGrid } from "@/components/detalle/InfoGrid";
 import { EvaluacionChecklist } from "@/components/detalle/EvaluacionChecklist";
-import { ImageGallery } from "@/components/detalle/ImageGallery";
 import { EstadoSidebar } from "@/components/detalle/EstadoSidebar";
 
 async function getReporte(id: number) {
@@ -109,17 +108,6 @@ export default async function ReporteDetallePage({
             </CardContent>
           </Card>
 
-          {/* Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Imágenes adjuntas ({reporte.urlImagenes.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ImageGallery urls={reporte.urlImagenes} />
-            </CardContent>
-          </Card>
         </div>
 
         {/* Sidebar */}

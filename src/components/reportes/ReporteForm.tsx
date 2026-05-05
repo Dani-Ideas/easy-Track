@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +16,6 @@ import { InfoGeneralSection } from "./sections/InfoGeneralSection";
 import { UbicacionSection } from "./sections/UbicacionSection";
 import { EvaluacionSection } from "./sections/EvaluacionSection";
 import { ComentariosSection } from "./sections/ComentariosSection";
-import { ImageUploadSection } from "./sections/ImageUploadSection";
 
 export function ReporteForm() {
   const router = useRouter();
@@ -37,7 +36,6 @@ export function ReporteForm() {
         iluminacion: false,
         equipo: false,
       },
-      urlImagenes: [],
     },
   });
 
@@ -50,7 +48,6 @@ export function ReporteForm() {
       idEspacio: draft.idEspacio ?? 0,
       descripcion: draft.descripcion,
       evaluacion: draft.evaluacion,
-      urlImagenes: draft.imageUrls,
     });
   }
 
@@ -63,7 +60,6 @@ export function ReporteForm() {
       idEspacio: values.idEspacio,
       descripcion: values.descripcion ?? "",
       evaluacion: values.evaluacion,
-      imageUrls: values.urlImagenes ?? [],
     });
   }
 
@@ -98,11 +94,6 @@ export function ReporteForm() {
             <EvaluacionSection form={form} />
             <Separator />
             <ComentariosSection form={form} />
-            <Separator />
-            <ImageUploadSection
-              value={form.watch("urlImagenes") ?? []}
-              onChange={(urls) => form.setValue("urlImagenes", urls)}
-            />
           </CardContent>
         </Card>
 

@@ -17,7 +17,6 @@ export const reporteFormSchema = z.object({
   idEspacio: z.number().positive("El espacio es requerido"),
   descripcion: z.string().max(500, "Máximo 500 caracteres").optional(),
   evaluacion: evaluacionSchema,
-  urlImagenes: z.array(z.string()),
 });
 
 export type ReporteFormValues = z.infer<typeof reporteFormSchema>;
