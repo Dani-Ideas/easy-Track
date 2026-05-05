@@ -245,18 +245,10 @@ Todas reciben `form: UseFormReturn<ReporteFormValues>`.
 | `UbicacionSection` | `tipoUbicacion`, grupo (select local), `idEspacio` | `sections/UbicacionSection.tsx` |
 | `EvaluacionSection` | `evaluacion.limpieza`, `evaluacion.seguridad`, `evaluacion.iluminacion`, `evaluacion.equipo` | `sections/EvaluacionSection.tsx` |
 | `ComentariosSection` | `descripcion` | `sections/ComentariosSection.tsx` |
-| `ImageUploadSection` | `urlImagenes` | `sections/ImageUploadSection.tsx` |
-
 **`UbicacionSection`** tiene lógica especial:
 - Carga tipos y grupos con `useEffect` al montar
 - Al seleccionar un grupo, hace fetch de `/api/espacios?idGrupo=N`
 - El select de espacio se deshabilita hasta seleccionar un grupo
-
-**`ImageUploadSection`** — flujo de upload:
-1. Usuario arrastra o selecciona imágenes
-2. `POST /api/upload` → obtiene firma de Cloudinary
-3. `POST` directo a Cloudinary con `FormData`
-4. URL retornada se agrega al array `urlImagenes`
 
 ---
 
@@ -311,16 +303,6 @@ Renderiza el JSON de evaluación como una lista de criterios con íconos y estad
 
 ---
 
-### `ImageGallery` — `src/components/detalle/ImageGallery.tsx`
-
-Grid de 3 columnas con las imágenes del reporte. Click en imagen → lightbox con `Dialog`.
-
-**Props:**
-```typescript
-{
-  urls: string[]
-}
-```
 
 ---
 

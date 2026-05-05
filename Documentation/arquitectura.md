@@ -6,7 +6,7 @@
 |---|---|---|
 | Framework | Next.js (App Router) | 16.2.1 |
 | Lenguaje | TypeScript | 5.x |
-| Base de datos | PostgreSQL (Docker local) | 16 |
+| Base de datos | MySQL (Docker local) | 8 |
 | ORM | Prisma | 6.x |
 | Autenticación | NextAuth.js v5 beta | 5.0.0-beta.30 |
 | Estado global | Zustand (con persist) | 5.x |
@@ -16,7 +16,6 @@
 | Iconos | Lucide React | 1.x |
 | Tema | next-themes (class strategy) | 0.4.x |
 | Exportación | xlsx (SheetJS) | 0.18.x |
-| Imágenes | Cloudinary | 2.x |
 
 ## Estructura de directorios
 
@@ -46,7 +45,6 @@ faciltrack/
 │   │   │   ├── grupos/
 │   │   │   ├── tipos-espacio/
 │   │   │   ├── stats/
-│   │   │   └── upload/
 │   │   ├── layout.tsx         # Root layout: ThemeProvider, fuentes
 │   │   ├── page.tsx           # Redirige a /dashboard
 │   │   ├── error.tsx          # Error boundary global
@@ -62,7 +60,6 @@ faciltrack/
 │   ├── lib/
 │   │   ├── auth.ts            # Configuración NextAuth (Node.js)
 │   │   ├── prisma.ts          # Singleton del cliente Prisma
-│   │   ├── cloudinary.ts      # Configuración Cloudinary SDK
 │   │   ├── utils.ts           # Función cn() de Tailwind
 │   │   ├── validations/       # Schemas Zod
 │   │   └── utils/             # Utilidades (fechas, export, estados)
@@ -120,8 +117,6 @@ Los criterios de evaluación del reporte (limpieza, seguridad, iluminación, equ
 }
 ```
 
-### Imágenes como array
-Las URLs de imágenes se almacenan como `String[]` (array nativo de PostgreSQL) en lugar de una tabla separada `ReporteImagen`. Apropiado mientras el número de imágenes sea pequeño.
 
 ### Zustand con persist parcial
 `useUIStore` persiste solo `sidebarCollapsed` en localStorage. Los filtros del dashboard se reinician al recargar la página intencionalmente.
@@ -153,7 +148,6 @@ DashboardPage (Server Component)
         ├── useReporteFormStore (draft en localStorage)
         ├── react-hook-form + zodResolver
         ├── UbicacionSection → fetch /api/tipos-espacio, /api/grupos, /api/espacios
-        ├── ImageUploadSection → POST /api/upload → Cloudinary
         └── onSubmit → POST /api/reportes → redirect /reportes/[id]
 ```
 
@@ -162,7 +156,7 @@ DashboardPage (Server Component)
 ```
 /reportes/[id] (Server Component)
   ├── prisma.reporte.findUnique() → datos iniciales
-  ├── <ReporteHeader />, <InfoGrid />, <EvaluacionChecklist />, <ImageGallery />
+  ├── <ReporteHeader />, <InfoGrid />, <EvaluacionChecklist />
   └── <EstadoSidebar /> (Client Component)
         ├── <AsignarTareaModal />
         │     └── PATCH /api/reportes/[id]

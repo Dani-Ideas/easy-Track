@@ -58,7 +58,6 @@ export async function POST(req: NextRequest) {
       idEspacio: body.idEspacio,
       descripcion: body.descripcion,
       evaluacion: body.evaluacion,
-      urlImagenes: body.urlImagenes ?? [],
       isDraft: body.isDraft ?? false,
       creadoPorId: session.user?.id,
     },
