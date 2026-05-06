@@ -1,4 +1,7 @@
-import { User, CalendarDays } from "lucide-react";
+"use client";
+
+import { useState, useCallback } from "react";
+import { User, CalendarDays, UserPlus } from "lucide-react";
 import {
   FormControl,
   FormField,
@@ -16,6 +19,19 @@ interface InfoGeneralSectionProps {
 }
 
 export function InfoGeneralSection({ form }: InfoGeneralSectionProps) {
+  const [esNuevo, setEsNuevo] = useState(false);
+
+  const checkPersonal = useCallback(async (nombre: string) => {
+    if (!nombre.trim() || nombre.trim().length < 2) { setEsNuevo(false); return; }
+    try {
+      const res  = await fetch("/api/personal");
+      const list = await res.json() as { nombreNorm: string }[];
+      const norm = nombre.trim().toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+      setEsNuevo(!list.some((p) => p.nombreNorm === norm));
+    } catch { setEsNuevo(false); }
+  }, []);
+
   return (
     <div className="space-y-4">
       <FormSectionHeader
@@ -31,9 +47,26 @@ export function InfoGeneralSection({ form }: InfoGeneralSectionProps) {
             <FormItem>
               <FormLabel>Nombre del solicitante</FormLabel>
               <FormControl>
-                <Input placeholder="Ej. María García" {...field} />
+                <Input
+                  placeholder="Ej. María García"
+                  {...field}
+                  onBlur={(e) => {
+                    field.onBlur();
+                    checkPersonal(e.target.value);
+                  }}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    if (esNuevo) setEsNuevo(false);
+                  }}
+                />
               </FormControl>
               <FormMessage />
+              {esNuevo && (
+                <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  <UserPlus className="h-3 w-3" />
+                  Se registrará como nuevo personal
+                </p>
+              )}
             </FormItem>
           )}
         />
