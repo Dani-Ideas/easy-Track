@@ -1,116 +1,304 @@
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient, CategoriaEvaluacion } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+function rooms(prefix: string, count: number): { espacio: string }[] {
+  return Array.from({ length: count }, (_, i) => ({
+    espacio: `${prefix}${String(i + 1).padStart(3, "0")}`,
+  }));
+}
+
+function labAreas(
+  config: Array<[start: number, end: number, piso: string]>
+): { espacio: string; piso: string }[] {
+  return config.flatMap(([start, end, piso]) =>
+    Array.from({ length: end - start + 1 }, (_, i) => ({
+      espacio: `Área técnica ${String(start + i).padStart(2, "0")}`,
+      piso,
+    }))
+  );
+}
+
+type EspacioDef = { espacio: string; piso?: string; idGrupo: number; idTipoEspacio: number };
+
+function forGrupo(
+  idGrupo: number,
+  idTipoEspacio: number,
+  items: { espacio: string; piso?: string }[]
+): EspacioDef[] {
+  return items.map(({ espacio, piso }) => ({ espacio, piso, idGrupo, idTipoEspacio }));
+}
+
+const DEFAULT_AREAS = [
+  "General",
+  "Mantenimiento General",
+  "Electricidad",
+  "Plomería",
+  "Limpieza",
+  "Infraestructura",
+  "Tecnología",
+];
+
 async function main() {
-  // Seed tipos de espacio (secuencial para respetar autoincrement)
-  const tiposData = [
-    { id: 1, nombre: "Aulas" },
-    { id: 2, nombre: "Baños" },
-    { id: 3, nombre: "Laboratorios" },
-    { id: 4, nombre: "Áreas Comunes" },
-    { id: 5, nombre: "Oficinas" },
-  ];
-  const tipos = [];
-  for (const t of tiposData) {
-    const item = await prisma.tipoEspacio.upsert({
-      where: { id: t.id },
-      update: {},
-      create: t,
-    });
-    tipos.push(item);
-  }
+  // Full reset — FK-safe deletion order
+  await prisma.logAccion.deleteMany();
+  await prisma.reporte.deleteMany();
+  await prisma.personal.deleteMany();
+  await prisma.user.deleteMany();           // cascades Account + Session
+  await prisma.verificationToken.deleteMany();
+  await prisma.area.deleteMany();
+  await prisma.espacio.deleteMany();
+  await prisma.grupo.deleteMany();
+  await prisma.tipoEspacio.deleteMany();
 
-  // Seed grupos (secuencial para respetar autoincrement)
-  const gruposData = [
-    { id: 1, nombre: "Edificio A" },
-    { id: 2, nombre: "Edificio B" },
-    { id: 3, nombre: "Edificio C" },
-    { id: 4, nombre: "Pabellón Principal" },
-  ];
-  const grupos = [];
-  for (const g of gruposData) {
-    const item = await prisma.grupo.upsert({
-      where: { id: g.id },
-      update: {},
-      create: g,
-    });
-    grupos.push(item);
-  }
+  // ── Áreas responsables ──────────────────────────────────────────────────────
+  await prisma.area.createMany({
+    data: DEFAULT_AREAS.map((nombre) => ({ nombre })),
+  });
+  const generalArea = await prisma.area.findUniqueOrThrow({ where: { nombre: "General" } });
 
-  // Seed espacios (secuencial para respetar foreign keys)
-  const espaciosData = [
-    { id: 1, espacio: "Aula 101", idGrupo: 1, idTipoEspacio: 1 },
-    { id: 2, espacio: "Aula 102", idGrupo: 1, idTipoEspacio: 1 },
-    { id: 3, espacio: "Aula 201", idGrupo: 2, idTipoEspacio: 1 },
-    { id: 4, espacio: "Baño Planta Baja", idGrupo: 1, idTipoEspacio: 2 },
-    { id: 5, espacio: "Baño Segundo Piso", idGrupo: 2, idTipoEspacio: 2 },
-    { id: 6, espacio: "Lab. Cómputo", idGrupo: 3, idTipoEspacio: 3 },
-    { id: 7, espacio: "Lab. Ciencias", idGrupo: 3, idTipoEspacio: 3 },
-    { id: 8, espacio: "Patio Central", idGrupo: 4, idTipoEspacio: 4 },
-    { id: 9, espacio: "Dirección", idGrupo: 4, idTipoEspacio: 5 },
-  ];
-  const espacios = [];
-  for (const e of espaciosData) {
-    const item = await prisma.espacio.upsert({
-      where: { id: e.id },
-      update: {},
-      create: e,
-    });
-    espacios.push(item);
-  }
 
-  // Seed usuarios
-  const adminPassword = await bcrypt.hash("admin123", 10);
-  const staffPassword = await bcrypt.hash("staff123", 10);
-
-  await prisma.user.upsert({
-    where: { email: "admin@faciltrack.local" },
-    update: {},
-    create: {
-      email: "admin@faciltrack.local",
-      name: "Administrador",
-      password: adminPassword,
-      role: "ADMIN",
-    },
+  // ── Tipos de espacio ────────────────────────────────────────────────────────
+  await prisma.tipoEspacio.createMany({
+    data: [
+      { id: 1, nombre: "Aula",               categoriaEvaluacion: CategoriaEvaluacion.SALONES      },
+      { id: 2, nombre: "Laboratorio",         categoriaEvaluacion: CategoriaEvaluacion.SALONES      },
+      { id: 3, nombre: "Taller",              categoriaEvaluacion: CategoriaEvaluacion.SALONES      },
+      { id: 4, nombre: "Servicio Sanitario",  categoriaEvaluacion: CategoriaEvaluacion.SANITARIOS   },
+      { id: 5, nombre: "Área Administrativa", categoriaEvaluacion: CategoriaEvaluacion.SALONES      },
+      { id: 6, nombre: "Área Común",          categoriaEvaluacion: CategoriaEvaluacion.AREAS_COMUNES },
+    ],
   });
 
-  await prisma.user.upsert({
-    where: { email: "staff@faciltrack.local" },
-    update: {},
-    create: {
-      email: "staff@faciltrack.local",
-      name: "Personal Staff",
-      password: staffPassword,
-      role: "STAFF",
-    },
+  // ── Grupos (27) ─────────────────────────────────────────────────────────────
+  await prisma.grupo.createMany({
+    data: [
+      // Aulas
+      { id:  1, nombre: "Bloque J"               },
+      { id:  2, nombre: "Bloque A1"              },
+      { id:  3, nombre: "Bloque A2"              },
+      { id:  4, nombre: "Bloque A3"              },
+      { id:  5, nombre: "Bloque A4"              },
+      { id:  6, nombre: "Bloque A5"              },
+      { id:  7, nombre: "Bloque A6"              },
+      { id:  8, nombre: "Bloque A7"              },
+      { id:  9, nombre: "Bloque A8"              },
+      { id: 10, nombre: "Bloque A9"              },
+      { id: 11, nombre: "Bloque A10"             },
+      { id: 12, nombre: "Bloque A11"             },
+      { id: 13, nombre: "Bloque PG"              },
+      { id: 14, nombre: "Centro Tecnológico"     },
+      // Laboratorios
+      { id: 15, nombre: "Laboratorios Generales" },
+      { id: 16, nombre: "Laboratorio 1"          },
+      { id: 17, nombre: "Laboratorio 2"          },
+      { id: 18, nombre: "Laboratorio 3"          },
+      { id: 19, nombre: "Laboratorio 4"          },
+      // Taller
+      { id: 20, nombre: "Área de Medios"         },
+      // Servicio Sanitario
+      { id: 21, nombre: "Servicios Sanitarios"   },
+      // Área Administrativa
+      { id: 22, nombre: "Edificio Administrativo" },
+      { id: 23, nombre: "Centro Documental"      },
+      { id: 24, nombre: "Edificio Académico"     },
+      { id: 25, nombre: "Edificio Formación"     },
+      // Área Común
+      { id: 26, nombre: "Centro Integral"        },
+      { id: 27, nombre: "Zonas Comunes"          },
+    ],
   });
 
-  await prisma.user.upsert({
-    where: { email: "tecnico@faciltrack.local" },
-    update: {},
-    create: {
-      email: "tecnico@faciltrack.local",
-      name: "Técnico Mantenimiento",
-      password: await bcrypt.hash("tecnico123", 10),
-      role: "TECNICO",
-    },
+  // ── Espacios (436) ──────────────────────────────────────────────────────────
+  const espacios: EspacioDef[] = [
+
+    // ── Aulas (tipo 1) ────────────────────────────────────────────────────────
+    ...forGrupo( 1, 1, rooms("J-",   7)),
+    ...forGrupo( 2, 1, rooms("B1-", 15)),
+    ...forGrupo( 3, 1, rooms("B2-", 15)),
+    ...forGrupo( 4, 1, rooms("B3-", 19)),
+    ...forGrupo( 5, 1, rooms("B4-", 12)),
+    ...forGrupo( 6, 1, rooms("B5-", 19)),
+    ...forGrupo( 7, 1, rooms("B6-", 21)),
+    ...forGrupo( 8, 1, rooms("B7-", 18)),
+    ...forGrupo( 9, 1, rooms("B8-", 27)),
+    ...forGrupo(10, 1, rooms("B9-", 16)),
+    ...forGrupo(11, 1, rooms("B10-", 23)),
+    ...forGrupo(12, 1, rooms("B11-", 34)),
+    ...forGrupo(13, 1, rooms("PG-", 25)),
+    ...forGrupo(14, 1, [
+      { espacio: "Aula 1" }, { espacio: "Aula 2" }, { espacio: "Aula 3" },
+      { espacio: "Aula 4" }, { espacio: "Aula 5" }, { espacio: "Aula 6" },
+      { espacio: "Aula 7" }, { espacio: "Aula 8" }, { espacio: "Aula 9" },
+    ]),
+
+    // ── Laboratorios (tipo 2) ─────────────────────────────────────────────────
+    ...forGrupo(15, 2, [
+      { espacio: "Lab. Experimental 1" }, { espacio: "Lab. Experimental 2" },
+      { espacio: "Lab. Experimental 3" }, { espacio: "Lab. Experimental 4" },
+    ]),
+    ...forGrupo(16, 2, labAreas([[1, 10, "Planta Baja"], [11, 12, "1er Piso"]])),
+    ...forGrupo(17, 2, labAreas([[1,  8, "Planta Baja"]])),
+    ...forGrupo(18, 2, labAreas([[1, 10, "Planta Baja"], [11, 20, "1er Piso"], [21, 33, "2do Piso"]])),
+    ...forGrupo(19, 2, labAreas([[1, 10, "Planta Baja"], [11, 14, "1er Piso"]])),
+
+    // ── Taller (tipo 3) ───────────────────────────────────────────────────────
+    ...forGrupo(20, 3, [
+      { espacio: "Taller Audiovisual" },
+      { espacio: "Taller Editorial"   },
+      { espacio: "Taller Multimedia"  },
+    ]),
+
+    // ── Servicios Sanitarios (tipo 4) — 48 espacios ───────────────────────────
+    ...forGrupo(21, 4, [
+      { espacio: "Bloque Norte planta baja",          piso: "Planta Baja" },
+      { espacio: "Bloque Norte 1er piso",             piso: "1er Piso"    },
+      { espacio: "Bloque Norte 2do piso",             piso: "2do Piso"    },
+      { espacio: "Bloque Sur planta baja",            piso: "Planta Baja" },
+      { espacio: "Bloque Sur 1er piso",               piso: "1er Piso"    },
+      { espacio: "Bloque Sur 2do piso",               piso: "2do Piso"    },
+      { espacio: "Bloque Este planta baja",           piso: "Planta Baja" },
+      { espacio: "Bloque Este 1er piso",              piso: "1er Piso"    },
+      { espacio: "Bloque Este 2do piso",              piso: "2do Piso"    },
+      { espacio: "Bloque Oeste planta baja",          piso: "Planta Baja" },
+      { espacio: "Bloque Oeste 1er piso",             piso: "1er Piso"    },
+      { espacio: "Bloque Oeste 2do piso",             piso: "2do Piso"    },
+      { espacio: "Zona Académica planta baja",        piso: "Planta Baja" },
+      { espacio: "Zona Académica 1er piso",           piso: "1er Piso"    },
+      { espacio: "Zona Académica 2do piso",           piso: "2do Piso"    },
+      { espacio: "Zona Administrativa planta baja",   piso: "Planta Baja" },
+      { espacio: "Zona Administrativa 1er piso",      piso: "1er Piso"    },
+      { espacio: "Zona Administrativa 2do piso",      piso: "2do Piso"    },
+      { espacio: "Centro Documental"                                      },
+      { espacio: "Centro Tecnológico 1er piso",       piso: "1er Piso"    },
+      { espacio: "Centro Tecnológico 2do piso",       piso: "2do Piso"    },
+      { espacio: "Centro de Idiomas 2do piso",        piso: "2do Piso"    },
+      { espacio: "Edificio Multiusos planta baja",    piso: "Planta Baja" },
+      { espacio: "Edificio Multiusos 1er piso",       piso: "1er Piso"    },
+      { espacio: "Edificio Multiusos 2do piso",       piso: "2do Piso"    },
+      { espacio: "Centro de Atención planta baja",    piso: "Planta Baja" },
+      { espacio: "Centro de Atención 1er piso",       piso: "1er Piso"    },
+      { espacio: "Centro de Atención 2do piso",       piso: "2do Piso"    },
+      { espacio: "Anexo Norte"                                            },
+      { espacio: "Edificio de Servicios planta baja", piso: "Planta Baja" },
+      { espacio: "Edificio de Servicios 1er piso",    piso: "1er Piso"    },
+      { espacio: "Edificio de Servicios 2do piso",    piso: "2do Piso"    },
+      { espacio: "Área de Extensión"                                      },
+      { espacio: "Torre Administrativa planta baja",  piso: "Planta Baja" },
+      { espacio: "Torre Administrativa 1er piso",     piso: "1er Piso"    },
+      { espacio: "Torre Administrativa 2do piso",     piso: "2do Piso"    },
+      { espacio: "Kiosco Norte"                                           },
+      { espacio: "Kiosco Oriente"                                         },
+      { espacio: "Mixto"                                                  },
+      { espacio: "Multigénero"                                            },
+      { espacio: "Laboratorio 1"                                          },
+      { espacio: "Laboratorio 2"                                          },
+      { espacio: "Laboratorio 3 planta baja",         piso: "Planta Baja" },
+      { espacio: "Laboratorio 3 1er piso",            piso: "1er Piso"    },
+      { espacio: "Laboratorio 3 2do piso",            piso: "2do Piso"    },
+      { espacio: "Laboratorio 4"                                          },
+      { espacio: "Sala de personal"                                       },
+      { espacio: "Auditorio principal"                                    },
+    ]),
+
+    // ── Área Administrativa (tipo 5) ──────────────────────────────────────────
+    ...forGrupo(22, 5, [
+      { espacio: "Planta Baja",  piso: "Planta Baja" },
+      { espacio: "Primer Piso",  piso: "1er Piso"    },
+      { espacio: "Segundo Piso", piso: "2do Piso"    },
+    ]),
+    ...forGrupo(23, 5, [
+      { espacio: "Planta Baja", piso: "Planta Baja" },
+      { espacio: "Primer Piso", piso: "1er Piso"    },
+    ]),
+    ...forGrupo(24, 5, [
+      { espacio: "PB - Atención institucional",    piso: "Planta Baja" },
+      { espacio: "PB - Tutorías",                  piso: "Planta Baja" },
+      { espacio: "PB - Sala principal",            piso: "Planta Baja" },
+      { espacio: "PB - Soporte técnico",           piso: "Planta Baja" },
+      { espacio: "1er Piso - División académica",  piso: "1er Piso"    },
+      { espacio: "2do Piso - Apoyo académico",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Laboratorio de idiomas", piso: "2do Piso" },
+      { espacio: "2do Piso - Plataforma educativa",   piso: "2do Piso" },
+      { espacio: "2do Piso - Sala asesoría 1",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 2",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 3",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 4",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 5",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 6",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 7",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 8",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 9",     piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 10",    piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 11",    piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 12",    piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala asesoría 13",    piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala de juntas",      piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala de profesores",  piso: "2do Piso"    },
+      { espacio: "2do Piso - Sistemas",            piso: "2do Piso"    },
+    ]),
+    ...forGrupo(25, 5, [
+      { espacio: "PB - Educación continua",      piso: "Planta Baja" },
+      { espacio: "PB - Sala A",                  piso: "Planta Baja" },
+      { espacio: "PB - Sala B",                  piso: "Planta Baja" },
+      { espacio: "PB - Sala C",                  piso: "Planta Baja" },
+      { espacio: "PB - Sala D",                  piso: "Planta Baja" },
+      { espacio: "PB - Sala E",                  piso: "Planta Baja" },
+      { espacio: "1er Piso - Sala F",            piso: "1er Piso"    },
+      { espacio: "1er Piso - Sala G",            piso: "1er Piso"    },
+      { espacio: "1er Piso - Modalidad abierta", piso: "1er Piso"    },
+      { espacio: "2do Piso - Centro de idiomas", piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala H",            piso: "2do Piso"    },
+      { espacio: "2do Piso - Sala I",            piso: "2do Piso"    },
+    ]),
+
+    // ── Área Común (tipo 6) ───────────────────────────────────────────────────
+    ...forGrupo(26, 6, [
+      { espacio: "Planta Baja",                  piso: "Planta Baja" },
+      { espacio: "Primer Piso",                  piso: "1er Piso"    },
+      { espacio: "Segundo Piso",                 piso: "2do Piso"    },
+      { espacio: "Área deportiva administrativa"                     },
+      { espacio: "Gimnasio cubierto"                                 },
+      { espacio: "Canchas exteriores"                                },
+      { espacio: "Sala cultural"                                     },
+    ]),
+    ...forGrupo(27, 6, [
+      { espacio: "Zona deportiva"             },
+      { espacio: "Plaza Norte"                },
+      { espacio: "Plaza Sur"                  },
+      { espacio: "Explanada central"          },
+      { espacio: "Jardín académico"           },
+      { espacio: "Punto de apoyo estudiantil" },
+    ]),
+  ];
+
+  const result = await prisma.espacio.createMany({ data: espacios });
+
+  // ── Usuarios ─────────────────────────────────────────────────────────────────
+  const [adminPwd, staffPwd, tecnicoPwd] = await Promise.all([
+    bcrypt.hash("admin123",   10),
+    bcrypt.hash("staff123",   10),
+    bcrypt.hash("tecnico123", 10),
+  ]);
+
+  await prisma.user.createMany({
+    data: [
+      { email: "admin@faciltrack.local",   name: "Administrador",         password: adminPwd,   role: "ADMIN",   areaId: generalArea.id },
+      { email: "staff@faciltrack.local",   name: "Jefe de Área General",  password: staffPwd,   role: "STAFF",   areaId: generalArea.id },
+      { email: "tecnico@faciltrack.local", name: "Técnico Mantenimiento", password: tecnicoPwd, role: "TECNICO", areaId: generalArea.id },
+    ],
   });
 
   console.log("✅ Seed completado");
-  console.log(`   - ${tipos.length} tipos de espacio`);
-  console.log(`   - ${grupos.length} grupos/edificios`);
-  console.log(`   - ${espacios.length} espacios`);
-  console.log("   - 3 usuarios (admin, staff, tecnico)");
+  console.log(`   - ${DEFAULT_AREAS.length} áreas responsables`);
+  console.log("   - 6 tipos de espacio");
+  console.log("   - 27 grupos");
+  console.log(`   - ${result.count} espacios`);
+  console.log("   - 3 usuarios (admin, jefe-area, tecnico)");
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(() => prisma.$disconnect());
