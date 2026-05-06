@@ -28,19 +28,26 @@ cp .env.example .env
 
 ```env
 # Base de datos (Docker local)
-DATABASE_URL="mysql://faciltrack:faciltrack@localhost:3306/faciltrack"
+DATABASE_URL="postgresql://faciltrack:faciltrack@localhost:5432/faciltrack"
 
 # NextAuth v5
 AUTH_SECRET="genera-con: openssl rand -base64 32"
 AUTH_URL="http://localhost:3000"
 NEXTAUTH_URL="http://localhost:3000"
 
+# Cloudinary (opcional en desarrollo)
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=""
 ```
+
+> **Cloudinary es opcional en desarrollo.** Si no se configura, las imágenes subidas se previsualizan localmente con `URL.createObjectURL()` pero no se persisten.
 
 ## Configuración de la base de datos
 
 ```bash
-# 1. Levantar MySQL con Docker
+# 1. Levantar PostgreSQL con Docker
 docker compose up -d
 
 # 2. Verificar que el contenedor esté corriendo
@@ -84,21 +91,20 @@ Abre `http://localhost:3000`. La raíz redirige automáticamente a `/dashboard`.
 
 ## Docker Compose
 
-El archivo `docker-compose.yml` levanta un contenedor MySQL 8:
+El archivo `docker-compose.yml` levanta un contenedor PostgreSQL 16:
 
 ```yaml
 services:
   db:
-    image: mysql:8
+    image: postgres:16
     ports:
-      - "3306:3306"
+      - "5432:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: faciltrack
-      MYSQL_USER: faciltrack
-      MYSQL_PASSWORD: faciltrack
-      MYSQL_DATABASE: faciltrack
+      POSTGRES_USER: faciltrack
+      POSTGRES_PASSWORD: faciltrack
+      POSTGRES_DB: faciltrack
     volumes:
-      - mysqldata:/var/lib/mysql
+      - pgdata:/var/lib/postgresql/data
 ```
 
 ### Comandos útiles de Docker
