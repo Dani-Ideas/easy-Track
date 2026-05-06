@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { ReporteHeader } from "@/components/detalle/ReporteHeader";
 import { InfoGrid } from "@/components/detalle/InfoGrid";
 import { EvaluacionChecklist } from "@/components/detalle/EvaluacionChecklist";
 import { EstadoSidebar } from "@/components/detalle/EstadoSidebar";
+import { BitacoraPanel } from "@/components/detalle/BitacoraPanel";
 
 async function getReporte(id: number) {
   return prisma.reporte.findUnique({
@@ -18,6 +19,20 @@ async function getReporte(id: number) {
     include: {
       espacio: { include: { grupo: true, tipoEspacio: true } },
       creadoPor: { select: { name: true, email: true } },
+      personalResponsable: { select: { id: true, nombre: true } },
+      logAcciones: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          createdAt: true,
+          usuarioLogin: true,
+          usuarioReal: true,
+          accion: true,
+          detalle: true,
+          ip: true,
+          dispositivo: true,
+        },
+      },
     },
   });
 }
@@ -35,6 +50,14 @@ export default async function ReporteDetallePage({
 
   const reporte = await getReporte(reporteId);
   if (!reporte) notFound();
+
+  // Resolve current user's area name for STAFF matching check
+  const userArea = session?.user?.areaId
+    ? await prisma.area.findUnique({
+        where: { id: session.user.areaId },
+        select: { nombre: true },
+      })
+    : null;
 
   const evaluacion = reporte.evaluacion as {
     limpieza: number;
@@ -71,7 +94,6 @@ export default async function ReporteDetallePage({
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         {/* Main content */}
         <div className="space-y-6">
-          {/* General info */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Información del Reporte</CardTitle>
@@ -98,7 +120,6 @@ export default async function ReporteDetallePage({
             </CardContent>
           </Card>
 
-          {/* Evaluation */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Criterios de Evaluación</CardTitle>
@@ -108,6 +129,10 @@ export default async function ReporteDetallePage({
             </CardContent>
           </Card>
 
+          {/* Audit log — admin only */}
+          {session?.user?.role === "ADMIN" && (
+            <BitacoraPanel logs={reporte.logAcciones} />
+          )}
         </div>
 
         {/* Sidebar */}
@@ -115,10 +140,13 @@ export default async function ReporteDetallePage({
           reporteId={reporte.id}
           estado={reporte.estado}
           areaResponsable={reporte.areaResponsable}
+          personalResponsableId={reporte.personalResponsableId}
+          personalResponsableNombre={reporte.personalResponsable?.nombre ?? null}
           observaciones={reporte.observaciones}
           fechaAtencion={reporte.fechaAtencion}
           fechaResolucion={reporte.fechaResolucion}
           userRole={session?.user?.role}
+          userAreaNombre={userArea?.nombre ?? null}
         />
       </div>
     </div>
