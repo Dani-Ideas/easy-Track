@@ -21,6 +21,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.areaId = (user as { areaId?: number | null }).areaId ?? null;
       }
       return token;
     },
@@ -28,6 +29,7 @@ export const authConfig: NextAuthConfig = {
       if (token && session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        (session.user as { areaId?: number | null }).areaId = token.areaId as number | null;
       }
       return session;
     },

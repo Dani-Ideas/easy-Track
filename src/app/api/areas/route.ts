@@ -2,17 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const includeInactive = req.nextUrl.searchParams.get("includeInactive") === "true";
-
-  const tipos = await prisma.tipoEspacio.findMany({
-    where: includeInactive ? undefined : { activo: true },
+  const areas = await prisma.area.findMany({
     orderBy: { nombre: "asc" },
   });
-  return NextResponse.json(tipos);
+  return NextResponse.json(areas);
 }
 
 export async function POST(req: NextRequest) {
@@ -20,7 +17,12 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (session.user?.role !== "ADMIN") return NextResponse.json({ error: "Prohibido" }, { status: 403 });
 
-  const { nombre, categoriaEvaluacion } = await req.json();
-  const tipo = await prisma.tipoEspacio.create({ data: { nombre, categoriaEvaluacion } });
-  return NextResponse.json(tipo, { status: 201 });
+  const { nombre } = await req.json();
+  if (!nombre?.trim()) return NextResponse.json({ error: "nombre requerido" }, { status: 400 });
+
+  const existe = await prisma.area.findUnique({ where: { nombre: nombre.trim() } });
+  if (existe) return NextResponse.json({ error: "El área ya existe" }, { status: 409 });
+
+  const area = await prisma.area.create({ data: { nombre: nombre.trim() } });
+  return NextResponse.json(area, { status: 201 });
 }
