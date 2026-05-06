@@ -16,8 +16,6 @@
 # next.js
 /.next/
 /out/
-/.claude/
-CLAUDE.md
 
 # production
 /build
