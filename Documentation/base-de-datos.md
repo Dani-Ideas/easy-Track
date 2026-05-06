@@ -101,6 +101,7 @@ Reporte de inspección de una instalación. Modelo central del sistema.
 | `fechaAtencion` | DateTime? | Cuándo se inició la atención |
 | `fechaResolucion` | DateTime? | Cuándo se marcó como resuelto |
 | `evaluacion` | Json? | Criterios de evaluación (ver estructura abajo) |
+| `urlImagenes` | String[] | URLs de imágenes en Cloudinary |
 | `isDraft` | Boolean | `true` si es borrador sin enviar |
 | `creadoPorId` | String? (FK) | Referencia a User |
 
@@ -168,7 +169,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -225,6 +226,7 @@ model Reporte {
   fechaAtencion     DateTime?
   fechaResolucion   DateTime?
   evaluacion        Json?
+  urlImagenes       String[]
   isDraft           Boolean       @default(false)
 
   espacio     Espacio @relation(fields: [idEspacio], references: [id])
@@ -256,6 +258,6 @@ npm run db:studio
 # Ejecutar seed
 npm run db:seed
 
-# Conectar directamente con mysql
-docker exec -it faciltrack-db-1 mysql -u faciltrack -pfaciltrack faciltrack
+# Conectar directamente con psql
+docker exec -it faciltrack-db-1 psql -U faciltrack -d faciltrack
 ```
