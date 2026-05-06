@@ -18,11 +18,12 @@ import {
 } from "@/components/ui/select";
 import { FormSectionHeader } from "../FormSectionHeader";
 import type { UseFormReturn } from "react-hook-form";
-import type { ReporteFormValues } from "@/lib/validations/reporte.schema";
+import type { CategoriaEvaluacion, ReporteFormValues } from "@/lib/validations/reporte.schema";
 
 interface TipoEspacio {
   id: number;
   nombre: string;
+  categoriaEvaluacion: CategoriaEvaluacion;
 }
 
 interface Grupo {
@@ -38,9 +39,10 @@ interface Espacio {
 
 interface UbicacionSectionProps {
   form: UseFormReturn<ReporteFormValues>;
+  onCategoriaChange?: (categoria: CategoriaEvaluacion | null) => void;
 }
 
-export function UbicacionSection({ form }: UbicacionSectionProps) {
+export function UbicacionSection({ form, onCategoriaChange }: UbicacionSectionProps) {
   const [tipos, setTipos] = useState<TipoEspacio[]>([]);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [espacios, setEspacios] = useState<Espacio[]>([]);
@@ -80,7 +82,14 @@ export function UbicacionSection({ form }: UbicacionSectionProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo de ubicación</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={(v) => {
+                  const tipo = tipos.find((t) => String(t.id) === v);
+                  field.onChange(tipo?.nombre ?? "");
+                  onCategoriaChange?.(tipo?.categoriaEvaluacion ?? null);
+                }}
+                value={String(tipos.find((t) => t.nombre === field.value)?.id ?? "")}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar..." />
@@ -88,7 +97,7 @@ export function UbicacionSection({ form }: UbicacionSectionProps) {
                 </FormControl>
                 <SelectContent>
                   {tipos.map((t) => (
-                    <SelectItem key={t.id} value={t.nombre}>
+                    <SelectItem key={t.id} value={String(t.id)}>
                       {t.nombre}
                     </SelectItem>
                   ))}
