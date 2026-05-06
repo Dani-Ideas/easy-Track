@@ -3,10 +3,10 @@ services:
     image: mysql:8
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: faciltrack
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: faciltrack
       MYSQL_USER: faciltrack
       MYSQL_PASSWORD: faciltrack
-      MYSQL_DATABASE: faciltrack
     ports:
       - "3307:3306"
     volumes:
