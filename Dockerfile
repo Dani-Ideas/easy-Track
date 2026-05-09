@@ -11,6 +11,10 @@ RUN npm ci
 # Copiar código fuente
 COPY . .
 
+# prisma.config.ts requiere DATABASE_URL incluso en generate (no conecta, solo lee el schema)
+ARG DATABASE_URL=mysql://build:build@localhost:3306/build
+ENV DATABASE_URL=$DATABASE_URL
+
 # Generar cliente Prisma y compilar Next.js
 RUN npx prisma generate
 RUN npm run build
