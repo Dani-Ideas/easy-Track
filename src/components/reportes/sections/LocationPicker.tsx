@@ -41,6 +41,10 @@ export function LocationPicker({ form, onCategoriaChange }: LocationPickerProps)
   const [selectedEspacio, setSelectedEspacio] = useState<EspacioItem | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Extraído antes del narrowing de JSX para evitar que TS infiera 'never'
+  // dentro del bloque !selectedEspacio && <div>
+  const selectedEspacioId = selectedEspacio?.id ?? null;
+
   useEffect(() => {
     fetch("/api/tipos-espacio").then((r) => r.json()).then(setTipos);
   }, []);
@@ -173,7 +177,7 @@ export function LocationPicker({ form, onCategoriaChange }: LocationPickerProps)
         ))}
 
         {!loading && step === "espacio" && espacios.map((e) => {
-          const isSelected = selectedEspacio?.id === e.id;
+          const isSelected = selectedEspacioId === e.id;
           return (
             <button
               key={e.id}
