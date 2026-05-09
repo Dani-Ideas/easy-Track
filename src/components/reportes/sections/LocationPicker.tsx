@@ -142,8 +142,8 @@ export function LocationPicker({ form, onCategoriaChange }: LocationPickerProps)
         })}
       </nav>
 
-      {/* List panel */}
-      <div className="border rounded-lg overflow-hidden">
+      {/* List panel — se oculta cuando la selección está completa */}
+      {!selectedEspacio && <div className="border rounded-lg overflow-hidden">
         {loading && (
           <p className="p-4 text-sm text-muted-foreground text-center">Cargando...</p>
         )}
@@ -196,7 +196,7 @@ export function LocationPicker({ form, onCategoriaChange }: LocationPickerProps)
         {!loading && step === "tipo" && tipos.length === 0 && (
           <p className="p-4 text-sm text-muted-foreground text-center">No hay tipos disponibles.</p>
         )}
-      </div>
+      </div>}
 
       {/* Selection summary */}
       {selectedEspacio && selectedTipo && selectedGrupo && (

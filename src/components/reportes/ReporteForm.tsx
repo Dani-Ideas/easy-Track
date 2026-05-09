@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Send, Save } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,10 +103,6 @@ export function ReporteForm() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={handleSaveDraft} className="gap-2">
-            <Save className="h-4 w-4" />
-            Guardar borrador
-          </Button>
           <Button type="submit" disabled={submitting} className="gap-2">
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
