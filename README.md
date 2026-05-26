@@ -12,9 +12,7 @@ docker compose up --build
 docker compose up
 ```
 
-La aplicación estará en **http://localhost:3000**. Al arrancar por primera vez el contenedor ejecuta automáticamente:
-1. `prisma db push` — crea las tablas
-2. `npm run db:seed` — inserta tipos, grupos, 436 espacios y 13 usuarios
+La aplicación estará en **http://localhost:3000**. Docker se encarga de todo: levanta la base de datos, crea las tablas e inserta los datos de prueba antes de arrancar la app.
 
 ### Credenciales de prueba (contraseña: `123456` para todos)
 

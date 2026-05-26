@@ -15,11 +15,7 @@ Levanta MySQL + Next.js en contenedores. No requiere Node.js local.
 docker compose up --build
 ```
 
-Al iniciar por primera vez:
-1. Espera a que MySQL esté `healthy`
-2. Ejecuta `prisma db push` (crea las tablas)
-3. Ejecuta `npm run db:seed` (inserta datos si la BD está vacía)
-4. Arranca `next start` en el puerto 3000
+Docker se encarga de todo automáticamente: levanta MySQL, espera a que esté listo, crea las tablas, inserta los datos de prueba y arranca la aplicación.
 
 **Acceso:** http://localhost:3000
 
