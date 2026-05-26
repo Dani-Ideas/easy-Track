@@ -25,18 +25,20 @@ export const authConfig: NextAuthConfig = {
       if (isProtected) return isLoggedIn;
       return true;
     },
-    // Agrega role e id al JWT
+    // Agrega role, id y areaId al JWT
     jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
-        token.id = user.id;
+        token.role  = user.role;
+        token.id    = user.id;
+        token.areaId = user.areaId;
       }
       return token;
     },
-    // Expone role e id en la sesión del cliente
+    // Expone role, id y areaId en la sesión del cliente
     session({ session, token }) {
-      session.user.role = token.role;
-      session.user.id = token.id;
+      session.user.role   = token.role;
+      session.user.id     = token.id;
+      session.user.areaId = token.areaId;
       return session;
     },
   },
@@ -85,9 +87,9 @@ export const config = {
 
 | Rol | Permisos |
 |---|---|
-| `STAFF` | Crear reportes, ver todos los reportes |
-| `ADMIN` | Todo lo anterior + cambiar estado, asignar tareas, eliminar reportes |
-| `TECNICO` | Ver reportes + cambiar estado de reportes asignados |
+| `STAFF` | Jefe de área: crea reportes, consulta el panel y los reportes |
+| `ADMIN` | Administrador: acceso completo, asigna personal, cambia estados, elimina reportes |
+| `TECNICO` | Técnico: ve reportes asignados a su área y cambia su estado |
 
 ### Control de acceso por rol en la UI
 
@@ -191,6 +193,7 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      areaId?: number | null;
     } & DefaultSession["user"];
   }
 }

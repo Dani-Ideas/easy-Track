@@ -1,6 +1,6 @@
 # API Reference
 
-Todos los endpoints requieren autenticación. Las peticiones sin sesión activa retornan `401 No autorizado`.
+Todos los endpoints requieren sesión activa. Las peticiones sin sesión retornan `401 Unauthorized`.
 
 Base URL en desarrollo: `http://localhost:3000/api`
 
@@ -10,7 +10,7 @@ Base URL en desarrollo: `http://localhost:3000/api`
 
 ### `GET /api/reportes`
 
-Lista paginada de reportes. Solo retorna reportes que no son borradores (`isDraft: false`).
+Lista paginada de reportes enviados (`isDraft: false`).
 
 **Query params:**
 
@@ -29,17 +29,16 @@ Lista paginada de reportes. Solo retorna reportes que no son borradores (`isDraf
   "data": [
     {
       "id": 1,
-      "fechaCreacion": "2026-03-29T10:00:00.000Z",
-      "fechaInspeccion": "2026-03-29T00:00:00.000Z",
+      "fechaCreacion": "2026-05-01T10:00:00.000Z",
+      "fechaInspeccion": "2026-05-01T00:00:00.000Z",
       "nombreSolicitante": "María García",
-      "tipoUbicacion": "Aulas",
+      "tipoUbicacion": "Aula",
       "estado": "PENDIENTE",
       "descripcion": "Luminaria dañada",
-      "urlImagenes": [],
       "espacio": {
-        "espacio": "Aula 101",
-        "grupo": { "nombre": "Edificio A" },
-        "tipoEspacio": { "nombre": "Aulas" }
+        "espacio": "B1-001",
+        "grupo": { "nombre": "Bloque A1" },
+        "tipoEspacio": { "nombre": "Aula" }
       }
     }
   ],
@@ -59,17 +58,15 @@ Crea un nuevo reporte.
 ```json
 {
   "nombreSolicitante": "María García",
-  "fechaInspeccion": "2026-03-29",
-  "tipoUbicacion": "Aulas",
-  "idEspacio": 1,
+  "fechaInspeccion": "2026-05-01",
+  "tipoUbicacion": "Aula",
+  "idEspacio": 15,
   "descripcion": "Luminaria dañada en esquina derecha",
   "evaluacion": {
-    "limpieza": 4,
-    "seguridad": 3,
-    "iluminacion": false,
-    "equipo": true
+    "area_1": 3,
+    "area_2": 5,
+    "area_4": 2
   },
-  "urlImagenes": ["https://res.cloudinary.com/..."],
   "isDraft": false
 }
 ```
@@ -86,49 +83,44 @@ Retorna un reporte por ID con todas sus relaciones.
 ```json
 {
   "id": 1,
-  "fechaCreacion": "...",
-  "fechaInspeccion": "...",
-  "nombreSolicitante": "...",
-  "tipoUbicacion": "Aulas",
+  "nombreSolicitante": "María García",
+  "tipoUbicacion": "Aula",
   "estado": "PENDIENTE",
   "areaResponsable": null,
   "observaciones": null,
-  "fechaAtencion": null,
-  "fechaResolucion": null,
-  "evaluacion": { "limpieza": 4, "seguridad": 3, "iluminacion": false, "equipo": true },
-  "urlImagenes": [],
-  "espacio": {
-    "espacio": "Aula 101",
-    "grupo": { "id": 1, "nombre": "Edificio A" },
-    "tipoEspacio": { "id": 1, "nombre": "Aulas" }
+  "evaluacion": {
+    "area_1": 3,
+    "area_4": 2
   },
-  "creadoPor": { "name": "María García", "email": "staff@faciltrack.local" }
+  "espacio": {
+    "espacio": "B1-001",
+    "grupo": { "nombre": "Bloque A1" },
+    "tipoEspacio": { "nombre": "Aula" }
+  },
+  "creadoPor": { "name": "María García", "email": "jefe.limpieza@faciltrack.local" },
+  "personalResponsable": { "nombre": "Técnico Electricidad" }
 }
 ```
-
-**Errores:**
-- `404` si el reporte no existe
 
 ---
 
 ### `PATCH /api/reportes/[id]`
 
-Actualiza el estado y/o información de atención de un reporte.
+Actualiza estado, área responsable, observaciones y/o personal asignado.
 
-**Body** (todos los campos son opcionales):
+**Body** (todos opcionales):
 ```json
 {
   "estado": "EN_PROCESO",
   "areaResponsable": "Electricidad",
-  "observaciones": "Se revisará el sistema eléctrico del aula"
+  "observaciones": "Se revisará el sistema eléctrico",
+  "personalResponsableId": 3
 }
 ```
 
 **Comportamiento automático:**
-- Al cambiar `estado` a `EN_PROCESO` → se asigna `fechaAtencion = now()`
-- Al cambiar `estado` a `ATENDIDO` → se asigna `fechaResolucion = now()`
-
-**Respuesta:** Objeto `Reporte` actualizado con sus relaciones.
+- `estado: EN_PROCESO` → registra `fechaAtencion = now()`
+- `estado: ATENDIDO` → registra `fechaResolucion = now()`
 
 ---
 
@@ -142,20 +134,41 @@ Elimina un reporte permanentemente.
 
 ---
 
-## Catálogos
+## Áreas de responsabilidad
 
-### `GET /api/tipos-espacio`
+### `GET /api/areas`
 
-Lista todos los tipos de espacio ordenados por nombre.
+Lista todas las áreas activas ordenadas por nombre.
 
 **Respuesta:**
 ```json
 [
-  { "id": 1, "nombre": "Aulas" },
-  { "id": 4, "nombre": "Áreas Comunes" },
-  { "id": 2, "nombre": "Baños" },
-  { "id": 6, "nombre": "Laboratorios" },
-  { "id": 5, "nombre": "Oficinas" }
+  { "id": 1, "nombre": "Electricidad" },
+  { "id": 2, "nombre": "General" },
+  { "id": 3, "nombre": "Infraestructura" },
+  { "id": 4, "nombre": "Limpieza" },
+  { "id": 5, "nombre": "Mantenimiento General" },
+  { "id": 6, "nombre": "Plomería" },
+  { "id": 7, "nombre": "Tecnología" }
+]
+```
+
+Usado por `EvaluacionSection` en el formulario (filtra "General") y por `EvaluacionChecklist` en el detalle.
+
+---
+
+## Catálogos de ubicación
+
+### `GET /api/tipos-espacio`
+
+Lista todos los tipos de espacio.
+
+**Respuesta:**
+```json
+[
+  { "id": 1, "nombre": "Aula", "categoriaEvaluacion": "SALONES" },
+  { "id": 4, "nombre": "Servicio Sanitario", "categoriaEvaluacion": "SANITARIOS" },
+  { "id": 6, "nombre": "Área Común", "categoriaEvaluacion": "AREAS_COMUNES" }
 ]
 ```
 
@@ -163,15 +176,19 @@ Lista todos los tipos de espacio ordenados por nombre.
 
 ### `GET /api/grupos`
 
-Lista todos los grupos/edificios ordenados por nombre.
+Lista grupos/edificios, opcionalmente filtrados por tipo de espacio.
+
+**Query params:**
+
+| Param | Tipo | Descripción |
+|---|---|---|
+| `idTipoEspacio` | number | Filtrar grupos que tienen espacios de ese tipo |
 
 **Respuesta:**
 ```json
 [
-  { "id": 1, "nombre": "Edificio A" },
-  { "id": 2, "nombre": "Edificio B" },
-  { "id": 3, "nombre": "Edificio C" },
-  { "id": 4, "nombre": "Pabellón Principal" }
+  { "id": 1, "nombre": "Bloque J" },
+  { "id": 2, "nombre": "Bloque A1" }
 ]
 ```
 
@@ -179,7 +196,7 @@ Lista todos los grupos/edificios ordenados por nombre.
 
 ### `GET /api/espacios`
 
-Lista espacios con filtros opcionales.
+Lista espacios con filtros en cascada.
 
 **Query params:**
 
@@ -191,71 +208,34 @@ Lista espacios con filtros opcionales.
 **Respuesta:**
 ```json
 [
-  {
-    "id": 1,
-    "espacio": "Aula 101",
-    "idGrupo": 1,
-    "idTipoEspacio": 1,
-    "grupo": { "id": 1, "nombre": "Edificio A" },
-    "tipoEspacio": { "id": 1, "nombre": "Aulas" }
-  }
+  { "id": 15, "espacio": "B1-001", "piso": null },
+  { "id": 16, "espacio": "B1-002", "piso": "1er Piso" }
 ]
 ```
 
-Usado en el formulario para los selects en cascada: `tipo → grupo → espacio`.
+El formulario usa estos tres endpoints en cascada: el usuario elige tipo → se cargan grupos → se cargan espacios.
 
 ---
 
-## Estadísticas
+## Personal
 
-### `GET /api/stats`
+### `GET /api/personal`
 
-Retorna métricas para las tarjetas del dashboard.
+Lista el personal técnico, opcionalmente filtrado por área.
 
-**Respuesta:**
-```json
-{
-  "total": 248,
-  "pendientes": 24,
-  "enProceso": 12,
-  "atendidos": 212,
-  "atendidosRecientes": 18
-}
-```
+**Query params:**
 
-`atendidosRecientes` = reportes atendidos en los últimos 7 días.
-
----
-
-## Upload
-
-### `POST /api/upload`
-
-Genera una firma para subir una imagen directamente a Cloudinary desde el cliente.
-
-**Body:**
-```json
-{
-  "folder": "faciltrack/reportes",
-  "publicId": "opcional-id-personalizado"
-}
-```
+| Param | Tipo | Descripción |
+|---|---|---|
+| `areaId` | number | Filtrar por área de responsabilidad |
 
 **Respuesta:**
 ```json
-{
-  "uploadUrl": "https://api.cloudinary.com/v1_1/[cloud]/image/upload",
-  "signature": "sha1-hash",
-  "apiKey": "tu-api-key",
-  "timestamp": 1711700000,
-  "folder": "faciltrack/reportes",
-  "cloudName": "tu-cloud-name"
-}
+[
+  { "id": 1, "nombre": "Juan Pérez", "areaId": 3 },
+  { "id": 2, "nombre": "Ana López", "areaId": 3 }
+]
 ```
-
-El cliente usa estos datos para hacer un `POST multipart/form-data` directamente a Cloudinary sin pasar los archivos por el servidor Next.js.
-
-> Si Cloudinary no está configurado (en desarrollo), retorna `uploadUrl: undefined` y el cliente usa `URL.createObjectURL()` como fallback.
 
 ---
 
