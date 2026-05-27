@@ -1,4 +1,6 @@
 services:
+
+  # ── Base de datos MySQL 8 ───────────────────────────────────────────────────
   db:
     image: mysql:8
     restart: unless-stopped
@@ -8,9 +10,32 @@ services:
       MYSQL_USER: faciltrack
       MYSQL_PASSWORD: faciltrack
     ports:
-      - "3307:3306"
+      - "3307:3306"          # 3307 en el host → acceso local con Prisma Studio
     volumes:
       - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "faciltrack", "-pfaciltrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # ── Aplicación Next.js ──────────────────────────────────────────────────────
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      # URL interna entre contenedores (db = nombre del servicio)
+      DATABASE_URL: mysql://faciltrack:faciltrack@db:3306/faciltrack
+      # Auth — cambia AUTH_SECRET en producción real
+      AUTH_SECRET: ${AUTH_SECRET:-faciltrack-dev-secret-change-in-production}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   mysqldata:

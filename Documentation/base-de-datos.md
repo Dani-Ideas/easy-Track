@@ -1,5 +1,12 @@
 # Base de Datos
 
+Motor: **MySQL 8** vía Docker Compose.
+
+Conexión local: `mysql://faciltrack:faciltrack@localhost:3307/faciltrack`
+Conexión en contenedor: `mysql://faciltrack:faciltrack@db:3306/faciltrack`
+
+---
+
 ## Diagrama de relaciones
 
 ```
@@ -7,257 +14,213 @@ TipoEspacio         Grupo
     │                 │
     └────┐     ┌──────┘
          ▼     ▼
-        Espacio ──────────────────────────┐
-                                          │
-User ─────────────────────────────► Reporte
+        Espacio ──────────────────────────► Reporte ◄─── User
+                                                │            │
+                                           LogAccion       Area
+                                                │            │
+                                           Personal ────────┘
+User ──── Area
  │
  ├── Account   (NextAuth)
- ├── Session   (NextAuth)
+ └── Session   (NextAuth)
 ```
+
+---
 
 ## Modelos
 
 ### User
 
-Tabla de usuarios del sistema. Incluye los campos requeridos por el adaptador de NextAuth v5.
-
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | String (cuid) | PK — identificador único |
+| `id` | String (cuid) | PK |
 | `name` | String? | Nombre del usuario |
 | `email` | String (unique) | Correo electrónico |
-| `emailVerified` | DateTime? | Fecha de verificación de email |
-| `image` | String? | URL de foto de perfil |
-| `password` | String? | Hash bcrypt de la contraseña |
-| `role` | Role | Rol: STAFF, ADMIN o TECNICO |
-| `createdAt` | DateTime | Fecha de creación |
-| `updatedAt` | DateTime | Última actualización |
+| `password` | String? | Hash bcrypt |
+| `role` | Role | STAFF, ADMIN o TECNICO |
+| `areaId` | Int? | FK → Area (área de responsabilidad) |
 
 **Enum Role:**
 ```
-STAFF    → Personal que crea reportes
-ADMIN    → Administrador con acceso completo
-TECNICO  → Técnico que atiende reportes asignados
+STAFF    → Jefe de área: crea reportes, consulta el panel
+ADMIN    → Administrador: acceso completo, asigna personal, cambia estados
+TECNICO  → Técnico: ve y atiende reportes asignados a su área
 ```
+
+---
+
+### Area
+
+Áreas de responsabilidad del plantel.
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | Int (autoincrement) | PK |
+| `nombre` | String (unique) | Nombre del área |
+| `activo` | Boolean | Por defecto true |
+
+**Datos del seed:**
+- General
+- Mantenimiento General
+- Electricidad
+- Plomería
+- Limpieza
+- Infraestructura
+- Tecnología
+
+---
 
 ### TipoEspacio
 
-Catálogo de tipos de espacio (aulas, baños, laboratorios, etc.).
-
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | Int (autoincrement) | PK |
-| `nombre` | String (100) | Nombre del tipo |
+| `id` | Int | PK |
+| `nombre` | String | Nombre del tipo |
+| `categoriaEvaluacion` | CategoriaEvaluacion | SALONES, SANITARIOS o AREAS_COMUNES |
 
-**Datos iniciales (seed):**
-- Aulas
-- Baños
-- Laboratorios
-- Áreas Comunes
-- Oficinas
+**Datos del seed:**
+
+| id | Nombre | Categoría |
+|---|---|---|
+| 1 | Aula | SALONES |
+| 2 | Laboratorio | SALONES |
+| 3 | Taller | SALONES |
+| 4 | Servicio Sanitario | SANITARIOS |
+| 5 | Área Administrativa | SALONES |
+| 6 | Área Común | AREAS_COMUNES |
+
+---
 
 ### Grupo
 
-Edificios o agrupaciones de espacios.
+Edificios o bloques que agrupan espacios.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | Int (autoincrement) | PK |
-| `nombre` | String (100) | Nombre del edificio/grupo |
+| `id` | Int | PK |
+| `nombre` | String | Nombre del edificio/bloque |
 
-**Datos iniciales (seed):**
-- Edificio A
-- Edificio B
-- Edificio C
-- Pabellón Principal
+**27 grupos en el seed:** Bloque J, Bloque A1–A11, Bloque PG, Centro Tecnológico, 4 laboratorios, Área de Medios, Servicios Sanitarios, edificios administrativos, Centro Integral, Zonas Comunes.
+
+---
 
 ### Espacio
 
-Espacio específico dentro de un grupo/edificio.
+Espacio físico específico dentro de un grupo.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | Int (autoincrement) | PK |
-| `espacio` | String (100) | Nombre del espacio (ej. "Aula 101") |
-| `idGrupo` | Int (FK) | Referencia a Grupo |
-| `idTipoEspacio` | Int (FK) | Referencia a TipoEspacio |
+| `id` | Int | PK |
+| `espacio` | String | Nombre del espacio (ej. "B1-001") |
+| `piso` | String? | Planta (ej. "1er Piso") |
+| `idGrupo` | Int (FK) | → Grupo |
+| `idTipoEspacio` | Int (FK) | → TipoEspacio |
+
+**436 espacios en el seed.**
+
+---
+
+### Personal
+
+Técnicos del plantel asociados a un área.
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | Int | PK |
+| `nombre` | String | Nombre completo |
+| `nombreNorm` | String (unique) | Nombre normalizado (para búsquedas) |
+| `areaId` | Int? (FK) | → Area |
+| `rol` | Role? | STAFF, ADMIN o TECNICO |
+
+---
 
 ### Reporte
 
-Reporte de inspección de una instalación. Modelo central del sistema.
+Modelo central del sistema.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | Int (autoincrement) | PK |
-| `fechaCreacion` | DateTime | Timestamp automático al crear |
-| `fechaInspeccion` | DateTime | Fecha de la inspección (elegida en el formulario) |
-| `nombreSolicitante` | String (50) | Nombre de quien reporta |
-| `tipoUbicacion` | String (50) | Tipo de ubicación seleccionado |
-| `idEspacio` | Int (FK) | Referencia a Espacio |
-| `descripcion` | String? (500) | Comentarios del solicitante |
-| `estado` | EstadoReporte | Estado actual del reporte |
-| `areaResponsable` | String? (50) | Área asignada para atención |
-| `observaciones` | String? (500) | Notas técnicas del técnico |
-| `fechaAtencion` | DateTime? | Cuándo se inició la atención |
+| `id` | Int | PK |
+| `fechaCreacion` | DateTime | Timestamp automático |
+| `fechaInspeccion` | DateTime | Fecha elegida en el formulario |
+| `nombreSolicitante` | String (50) | Quien hace el reporte |
+| `tipoUbicacion` | String (50) | Nombre del tipo de espacio |
+| `idEspacio` | Int (FK) | → Espacio |
+| `descripcion` | String? (500) | Comentarios |
+| `estado` | EstadoReporte | PENDIENTE, EN_PROCESO o ATENDIDO |
+| `areaResponsable` | String? (50) | Área asignada |
+| `observaciones` | String? (500) | Notas técnicas |
+| `fechaAtencion` | DateTime? | Cuándo inició la atención |
 | `fechaResolucion` | DateTime? | Cuándo se marcó como resuelto |
-| `evaluacion` | Json? | Criterios de evaluación (ver estructura abajo) |
-| `urlImagenes` | String[] | URLs de imágenes en Cloudinary |
-| `isDraft` | Boolean | `true` si es borrador sin enviar |
-| `creadoPorId` | String? (FK) | Referencia a User |
+| `evaluacion` | Json? | Calificaciones por área (ver estructura) |
+| `isDraft` | Boolean | true si no fue enviado |
+| `creadoPorId` | String? (FK) | → User |
+| `personalResponsableId` | Int? (FK) | → Personal |
 
 **Enum EstadoReporte:**
 ```
-PENDIENTE   → Recién creado, sin atención
-EN_PROCESO  → Atención iniciada
-ATENDIDO    → Reporte resuelto
+PENDIENTE  → Recién creado
+EN_PROCESO → Atención iniciada (registra fechaAtencion)
+ATENDIDO   → Resuelto (registra fechaResolucion)
 ```
 
 **Estructura del campo `evaluacion` (JSON):**
-```typescript
+```json
 {
-  limpieza:    1 | 2 | 3 | 4 | 5,  // Calificación de limpieza
-  seguridad:   1 | 2 | 3 | 4 | 5,  // Calificación de seguridad
-  iluminacion: boolean,              // ¿Iluminación funcional?
-  equipo:      boolean               // ¿Equipo en buen estado?
+  "area_1": 4,
+  "area_3": 5,
+  "area_4": 2
 }
 ```
+Las claves son `area_{id}` donde `id` es el `Area.id`. Los valores son enteros 1–5. Solo se guardan las áreas que el usuario calificó (> 0).
 
-**Índices de la tabla Reporte:**
-```prisma
-@@index([estado])
-@@index([tipoUbicacion])
-@@index([fechaCreacion])
-```
+---
 
-### Account, Session, VerificationToken
+### LogAccion
 
-Modelos requeridos por el adaptador Prisma de NextAuth v5. No se usan directamente en la aplicación.
+Bitácora de auditoría. Cada acción relevante (cambio de estado, asignación, etc.) genera un registro.
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | Int | PK |
+| `createdAt` | DateTime | Timestamp automático |
+| `usuarioLogin` | String | Email del usuario autenticado |
+| `usuarioReal` | String? | Nombre del usuario |
+| `accion` | String | Descripción de la acción |
+| `detalle` | String? | Detalle adicional |
+| `ip` | String? | IP del cliente |
+| `dispositivo` | String? | User-Agent |
+| `areaId` | Int? (FK) | → Area |
+| `reporteId` | Int? (FK) | → Reporte |
 
 ---
 
 ## Transiciones de estado
 
-Los reportes siguen un flujo de estados unidireccional:
-
 ```
 PENDIENTE ──► EN_PROCESO ──► ATENDIDO
 ```
 
-Al pasar a `EN_PROCESO` se registra automáticamente `fechaAtencion`.
-Al pasar a `ATENDIDO` se registra automáticamente `fechaResolucion`.
-
-El campo `transicionesEstado` en `src/lib/utils/statusUtils.ts` define las transiciones válidas:
-
-```typescript
-export const transicionesEstado: Record<EstadoReporte, EstadoReporte[]> = {
-  PENDIENTE:  ["EN_PROCESO"],
-  EN_PROCESO: ["ATENDIDO"],
-  ATENDIDO:   [],
-};
-```
-
----
-
-## Schema Prisma completo
-
-```prisma
-// prisma/schema.prisma
-
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(STAFF)
-  accounts      Account[]
-  sessions      Session[]
-  reportes      Reporte[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-enum Role { STAFF ADMIN TECNICO }
-
-model TipoEspacio {
-  id       Int       @id @default(autoincrement())
-  nombre   String    @db.VarChar(100)
-  espacios Espacio[]
-}
-
-model Grupo {
-  id       Int       @id @default(autoincrement())
-  nombre   String    @db.VarChar(100)
-  espacios Espacio[]
-}
-
-model Espacio {
-  id            Int         @id @default(autoincrement())
-  espacio       String      @db.VarChar(100)
-  idGrupo       Int
-  idTipoEspacio Int
-  grupo         Grupo       @relation(fields: [idGrupo], references: [id])
-  tipoEspacio   TipoEspacio @relation(fields: [idTipoEspacio], references: [id])
-  reportes      Reporte[]
-}
-
-model Reporte {
-  id                Int           @id @default(autoincrement())
-  fechaCreacion     DateTime      @default(now())
-  fechaInspeccion   DateTime
-  nombreSolicitante String        @db.VarChar(50)
-  tipoUbicacion     String        @db.VarChar(50)
-  idEspacio         Int
-  descripcion       String?       @db.VarChar(500)
-  estado            EstadoReporte @default(PENDIENTE)
-  areaResponsable   String?       @db.VarChar(50)
-  observaciones     String?       @db.VarChar(500)
-  fechaAtencion     DateTime?
-  fechaResolucion   DateTime?
-  evaluacion        Json?
-  urlImagenes       String[]
-  isDraft           Boolean       @default(false)
-
-  espacio     Espacio @relation(fields: [idEspacio], references: [id])
-  creadoPor   User?   @relation(fields: [creadoPorId], references: [id])
-  creadoPorId String?
-
-  @@index([estado])
-  @@index([tipoUbicacion])
-  @@index([fechaCreacion])
-}
-
-enum EstadoReporte { PENDIENTE EN_PROCESO ATENDIDO }
-```
+Al pasar a `EN_PROCESO` → `fechaAtencion = now()`
+Al pasar a `ATENDIDO` → `fechaResolucion = now()`
 
 ---
 
 ## Comandos de base de datos
 
 ```bash
-# Aplicar schema sin migraciones (desarrollo)
+# Aplicar schema (desarrollo — sin migraciones)
 npm run db:push
 
-# Regenerar el cliente Prisma
+# Regenerar el cliente Prisma tras cambios en schema
 npm run db:generate
 
 # Abrir Prisma Studio (GUI visual)
 npm run db:studio
 
-# Ejecutar seed
+# Ejecutar seed manualmente
 npm run db:seed
 
-# Conectar directamente con psql
-docker exec -it faciltrack-db-1 psql -U faciltrack -d faciltrack
+# Consola MySQL directa
+docker exec -it faciltrack-db-1 mysql -u faciltrack -pfaciltrack faciltrack
 ```

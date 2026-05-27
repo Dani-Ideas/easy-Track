@@ -4,12 +4,7 @@
 
 ### `Sidebar` — `src/components/layout/Sidebar.tsx`
 
-Barra de navegación lateral. Solo visible en pantallas `lg` y superiores.
-
-**Elementos:**
-- Logo con icono `ShieldCheck` y texto "FaciliTrack"
-- Links de navegación con resaltado de ruta activa (`usePathname`)
-- Footer con versión y `ThemeToggle`
+Barra de navegación lateral colapsable.
 
 **Items de navegación:**
 
@@ -28,9 +23,8 @@ Barra de navegación lateral. Solo visible en pantallas `lg` y superiores.
 Barra superior sticky.
 
 **Elementos:**
-- Botón de menú móvil (visible solo en `< lg`) → abre `Sheet` con el Sidebar
-- Campana de notificaciones con punto rojo
-- Menú desplegable de usuario: nombre, email, rol, botón de cerrar sesión
+- Botón de menú móvil (abre `Sheet` con Sidebar en pantallas pequeñas)
+- Menú desplegable de usuario: nombre, email, rol, botón cerrar sesión
 
 **Props:**
 ```typescript
@@ -45,13 +39,11 @@ Barra superior sticky.
 
 ### `ThemeToggle` — `src/components/layout/ThemeToggle.tsx`
 
-Botón que alterna entre tema claro y oscuro usando `next-themes`.
+Alterna entre tema claro y oscuro usando `next-themes`.
 
 ---
 
 ### `PageBreadcrumb` — `src/components/layout/Breadcrumb.tsx`
-
-Breadcrumb de navegación basado en shadcn/ui.
 
 **Props:**
 ```typescript
@@ -60,101 +52,42 @@ Breadcrumb de navegación basado en shadcn/ui.
 }
 ```
 
-**Uso:**
-```tsx
-<PageBreadcrumb
-  segments={[
-    { label: "Panel Principal", href: "/dashboard" },
-    { label: "Nuevo Reporte" },
-  ]}
-/>
-```
-
 ---
 
 ## Dashboard
 
-### `StatsCard` — `src/components/dashboard/StatsCard.tsx`
+### `DashboardClient` — `src/components/dashboard/DashboardClient.tsx`
 
-Tarjeta de métrica con ícono, título, valor y descripción opcional.
+Client Component que combina filtros, tabla y paginación con fetch reactivo.
 
-**Props:**
-```typescript
-{
-  title: string
-  value: number | string
-  description?: string
-  icon: LucideIcon
-  iconColor?: string
-  trend?: { value: number; label: string; positive?: boolean }
-}
-```
+1. Observa `useUIStore.filters` con `useEffect`
+2. Construye query string y llama `GET /api/reportes`
+3. Muestra skeletons durante la carga
+4. Renderiza `ReportsTable` + `TablePagination`
 
 ---
 
 ### `ReportsFilters` — `src/components/dashboard/ReportsFilters.tsx`
 
-Controles de filtrado del dashboard. Escribe en `useUIStore`.
-
-**Filtros disponibles:**
-- Tipo de ubicación (Select)
-- Estado (Select: Pendiente / En Proceso / Atendido)
-- Fecha desde (Input date)
-- Fecha hasta (Input date)
-- Botón "Limpiar" si hay filtros activos
+Controles de filtrado: tipo de ubicación, estado, rango de fechas y botón "Limpiar".
 
 ---
 
 ### `ReportsTable` — `src/components/dashboard/ReportsTable.tsx`
 
-Tabla de reportes. Componente Server-compatible (sin hooks).
-
-**Props:**
-```typescript
-{
-  reportes: ReporteRow[]
-}
-```
-
-**Columnas:** Fecha | Solicitante | Tipo | Edificio/Espacio | Estado | Ver
+Tabla de reportes. **Columnas:** Fecha · Solicitante · Tipo · Edificio/Espacio · Estado · Ver
 
 ---
 
 ### `TablePagination` — `src/components/dashboard/TablePagination.tsx`
 
-Paginación reactiva. Lee y escribe `filters.page` en `useUIStore`.
-
-**Props:**
-```typescript
-{
-  total: number
-}
-```
-
-Muestra: "Mostrando X–Y de Z reportes" + botones anterior/siguiente.
-
----
-
-### `DashboardClient` — `src/components/dashboard/DashboardClient.tsx`
-
-Client Component que combina la tabla con la paginación y hace fetch reactivo cuando cambian los filtros.
-
-**Comportamiento:**
-1. Observa `useUIStore.filters` con `useEffect`
-2. Construye query string y llama `GET /api/reportes`
-3. Muestra `Skeleton` durante la carga
-4. Renderiza `ReportsTable` + `TablePagination`
+Muestra "Mostrando X–Y de Z reportes" + botones anterior/siguiente.
 
 ---
 
 ### `ExportButton` — `src/components/dashboard/ExportButton.tsx`
 
-Botón que exporta los reportes filtrados actuales a un archivo Excel (.xlsx).
-
-**Comportamiento:**
-1. Lee los filtros de `useUIStore`
-2. Llama `GET /api/reportes` con `pageSize=1000`
-3. Llama `exportReportesToExcel()` para descargar el archivo
+Exporta los reportes filtrados actuales a Excel (.xlsx) llamando `GET /api/reportes` con `pageSize=1000`.
 
 ---
 
@@ -164,37 +97,51 @@ Botón que exporta los reportes filtrados actuales a un archivo Excel (.xlsx).
 
 Componente principal del formulario. Client Component.
 
-**Comportamiento:**
 - Inicializa `useForm` con `zodResolver(reporteFormSchema)`
-- Detecta borrador guardado → muestra `DraftBanner`
-- Botón "Guardar borrador" → persiste en `useReporteFormStore`
 - Botón "Enviar reporte" → `POST /api/reportes` → redirige a `/reportes/[id]`
+- Orquesta las secciones: `InfoGeneralSection` → `LocationPicker` → `EvaluacionSection` → `ComentariosSection`
 
 ---
 
-### `DraftBanner` — `src/components/reportes/DraftBanner.tsx`
+### `LocationPicker` — `src/components/reportes/sections/LocationPicker.tsx`
 
-Alerta amber que aparece cuando hay un borrador guardado en localStorage.
+Selector de ubicación en 3 pasos con breadcrumb tipo flecha.
 
-**Props:**
-```typescript
-{
-  onRestore: () => void  // Callback para cargar el borrador en el formulario
-}
-```
+**Flujo:**
+1. **Tipo** — lista tipos de espacio; al seleccionar carga los grupos del tipo
+2. **Grupo** — lista edificios/bloques; al seleccionar carga los espacios
+3. **Espacio** — lista espacios específicos; al seleccionar colapsa el panel y muestra resumen
 
-**Muestra:** timestamp de último guardado + botones "Restaurar" y eliminar.
+**Comportamiento:**
+- El panel de lista se oculta cuando los 3 pasos están completos
+- El breadcrumb permite volver a pasos anteriores (los ya completados)
+- Llama `onCategoriaChange(categoriaEvaluacion)` para que `ReporteForm` actualice `EvaluacionSection`
+
+---
+
+### `EvaluacionSection` — `src/components/reportes/sections/EvaluacionSection.tsx`
+
+Carrusel de calificación por áreas de responsabilidad. Muestra una área a la vez.
+
+**Comportamiento:**
+- Carga áreas desde `GET /api/areas` (filtra "General")
+- Muestra una tarjeta por área con `StarRating` 1–5
+- Al seleccionar una calificación, avanza automáticamente 380ms después
+- Botón/swipe **Siguiente** bloqueado si el área actual no tiene calificación
+- Botón/swipe **Anterior** siempre disponible
+- Dots de progreso en la parte superior: activo (ancho), calificado (color), pendiente (gris)
+- Guarda los valores como `evaluacion.area_{id}`
 
 ---
 
 ### `StarRating` — `src/components/reportes/StarRating.tsx`
 
-Input de calificación de 1 a 5 estrellas usando íconos `Star` de Lucide.
+Input de calificación 1–5 con íconos `Star` de Lucide.
 
 **Props:**
 ```typescript
 {
-  value: number          // 0-5
+  value: number           // 0-5 (0 = sin calificar)
   onChange: (n: number) => void
   disabled?: boolean
 }
@@ -202,27 +149,21 @@ Input de calificación de 1 a 5 estrellas usando íconos `Star` de Lucide.
 
 ---
 
-### `ToggleField` — `src/components/reportes/ToggleField.tsx`
+### `InfoGeneralSection` — `src/components/reportes/sections/InfoGeneralSection.tsx`
 
-Campo booleano con ícono, etiqueta, descripción y Switch de shadcn/ui.
+Campos: `nombreSolicitante`, `fechaInspeccion`.
 
-**Props:**
-```typescript
-{
-  id: string
-  label: string
-  description?: string
-  icon?: LucideIcon
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}
-```
+---
+
+### `ComentariosSection` — `src/components/reportes/sections/ComentariosSection.tsx`
+
+Campo: `descripcion` (textarea opcional).
 
 ---
 
 ### `FormSectionHeader` — `src/components/reportes/FormSectionHeader.tsx`
 
-Encabezado de sección del formulario con ícono, título y separador.
+Encabezado de sección con ícono, título, descripción y separador.
 
 **Props:**
 ```typescript
@@ -235,148 +176,75 @@ Encabezado de sección del formulario con ícono, título y separador.
 
 ---
 
-### Secciones del formulario
-
-Todas reciben `form: UseFormReturn<ReporteFormValues>`.
-
-| Componente | Campos | Archivo |
-|---|---|---|
-| `InfoGeneralSection` | `nombreSolicitante`, `fechaInspeccion` | `sections/InfoGeneralSection.tsx` |
-| `UbicacionSection` | `tipoUbicacion`, grupo (select local), `idEspacio` | `sections/UbicacionSection.tsx` |
-| `EvaluacionSection` | `evaluacion.limpieza`, `evaluacion.seguridad`, `evaluacion.iluminacion`, `evaluacion.equipo` | `sections/EvaluacionSection.tsx` |
-| `ComentariosSection` | `descripcion` | `sections/ComentariosSection.tsx` |
-| `ImageUploadSection` | `urlImagenes` | `sections/ImageUploadSection.tsx` |
-
-**`UbicacionSection`** tiene lógica especial:
-- Carga tipos y grupos con `useEffect` al montar
-- Al seleccionar un grupo, hace fetch de `/api/espacios?idGrupo=N`
-- El select de espacio se deshabilita hasta seleccionar un grupo
-
-**`ImageUploadSection`** — flujo de upload:
-1. Usuario arrastra o selecciona imágenes
-2. `POST /api/upload` → obtiene firma de Cloudinary
-3. `POST` directo a Cloudinary con `FormData`
-4. URL retornada se agrega al array `urlImagenes`
-
----
-
 ## Vista Detalle del Reporte
 
 ### `ReporteHeader` — `src/components/detalle/ReporteHeader.tsx`
 
 Encabezado con número de reporte, `StatusBadge` y timestamps.
 
-**Props:**
-```typescript
-{
-  id: number
-  estado: string
-  fechaCreacion: Date
-  fechaAtencion?: Date | null
-  fechaResolucion?: Date | null
-}
-```
-
 ---
 
 ### `InfoGrid` — `src/components/detalle/InfoGrid.tsx`
 
-Grid 2×2 con datos básicos del reporte.
-
-**Props:**
-```typescript
-{
-  nombreSolicitante: string
-  fechaInspeccion: Date
-  tipoUbicacion: string
-  edificio?: string
-  espacio?: string
-}
-```
+Grid con datos básicos: solicitante, fecha, tipo de ubicación, edificio y espacio.
 
 ---
 
 ### `EvaluacionChecklist` — `src/components/detalle/EvaluacionChecklist.tsx`
 
-Renderiza el JSON de evaluación como una lista de criterios con íconos y estados.
-
-**Criterios de calificación por estrellas:**
-- 4-5 → "Bueno" (verde)
-- 2-3 → "Regular" (amber)
-- 0-1 → "Deficiente" (rojo)
-
-**Criterios booleanos:**
-- `true` → "Funcional" con `CheckCircle2` verde
-- `false` → "No funcional" con `XCircle` rojo
-
----
-
-### `ImageGallery` — `src/components/detalle/ImageGallery.tsx`
-
-Grid de 3 columnas con las imágenes del reporte. Click en imagen → lightbox con `Dialog`.
+Renderiza las calificaciones guardadas en el JSON `evaluacion` del reporte.
 
 **Props:**
 ```typescript
 {
-  urls: string[]
+  evaluacion: Record<string, number> | null
+  areas: { id: number; nombre: string }[]
 }
 ```
+
+**Comportamiento:**
+- Para cada área con calificación > 0 en `evaluacion`:
+  - Muestra el nombre del área con su ícono
+  - Muestra las estrellas rellenas (de 5)
+  - Muestra etiqueta según calificación: 4–5 = "Bueno" (verde), 3 = "Regular" (amber), 1–2 = "Deficiente" (rojo)
+- Si no hay áreas calificadas → "Sin evaluación registrada"
 
 ---
 
 ### `EstadoSidebar` — `src/components/detalle/EstadoSidebar.tsx`
 
-Panel lateral de gestión de estado. Client Component.
-
-**Props:**
-```typescript
-{
-  reporteId: number
-  estado: string
-  areaResponsable?: string | null
-  observaciones?: string | null
-  fechaAtencion?: Date | null
-  fechaResolucion?: Date | null
-  userRole?: string
-}
-```
+Panel lateral de gestión. Client Component.
 
 **Comportamiento:**
-- Muestra `StatusBadge` con el estado actual
-- Si el usuario es ADMIN o TECNICO y el reporte no está ATENDIDO:
-  - `PENDIENTE` → botón "Iniciar atención" → abre `AsignarTareaModal`
-  - `EN_PROCESO` → botón "Marcar como resuelto" → abre `AsignarTareaModal`
-- Si hay datos de atención, muestra tarjeta con área, fechas y observaciones
+- Muestra estado actual con `StatusBadge`
+- ADMIN/TECNICO: botones para avanzar el estado del reporte
+- Al hacer clic → abre `AsignarTareaModal`
+- Si el reporte tiene datos de atención, muestra tarjeta con área, fechas y observaciones
 
 ---
 
 ### `AsignarTareaModal` — `src/components/detalle/AsignarTareaModal.tsx`
 
-Dialog con formulario para asignar/resolver un reporte. Client Component.
-
-**Props:**
-```typescript
-{
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  reporteId: number
-  estadoActual: string
-}
-```
+Dialog para gestionar el estado de un reporte.
 
 **Campos:**
-- Área responsable (Select con 6 opciones predefinidas)
+- Área responsable (Select con áreas del sistema)
+- Personal responsable (Select filtrado por área)
 - Observaciones técnicas (Textarea)
 
-**Al enviar:**
-1. `PATCH /api/reportes/[id]` con `{ estado, areaResponsable, observaciones }`
-2. `router.refresh()` para recargar datos del server
+**Al enviar:** `PATCH /api/reportes/[id]` → `router.refresh()`
+
+---
+
+### `BitacoraPanel` — `src/components/detalle/BitacoraPanel.tsx`
+
+Tabla de auditoría con el historial de acciones del reporte. Solo visible para ADMIN.
 
 ---
 
 ## Componentes UI compartidos
 
-### `StatusBadge` — `src/components/ui/StatusBadge.tsx`
+### `StatusBadge`
 
 Badge con color según el estado del reporte.
 
@@ -385,44 +253,6 @@ Badge con color según el estado del reporte.
 | PENDIENTE | Amber |
 | EN_PROCESO | Azul |
 | ATENDIDO | Esmeralda |
-
-**Props:**
-```typescript
-{
-  estado: string
-  className?: string
-}
-```
-
----
-
-### `UserAvatar` — `src/components/ui/UserAvatar.tsx`
-
-Avatar con iniciales del nombre. El color de fondo varía según la primera letra.
-
-**Props:**
-```typescript
-{
-  name?: string | null
-  className?: string
-  size?: "sm" | "md"
-}
-```
-
----
-
-### `EmptyState` — `src/components/ui/EmptyState.tsx`
-
-Estado vacío centrado con ícono, título y descripción.
-
-**Props:**
-```typescript
-{
-  icon?: LucideIcon
-  title?: string
-  description?: string
-}
-```
 
 ---
 

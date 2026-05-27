@@ -1,0 +1,27 @@
+# Dependencias (se reinstalan en la imagen)
+node_modules
+
+# Build output (se regenera en la imagen)
+.next
+
+# Variables de entorno con credenciales locales
+.env
+.env.local
+.env.*.local
+
+# Git y herramientas de desarrollo
+.git
+.gitignore
+.claude
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db

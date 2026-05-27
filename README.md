@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FacilTrack
 
-## Getting Started
+Sistema web de gestión y control de reportes de inspección de instalaciones físicas (aulas, laboratorios, sanitarios, áreas comunes).
 
-First, run the development server:
+## Inicio rápido — Docker (todo en un comando)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Primera vez: construye la imagen, levanta MySQL y Next.js
+docker compose up --build
+
+# Reinicios posteriores (imagen ya construida)
+docker compose up
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La aplicación estará en **http://localhost:3000**. Docker se encarga de todo: levanta la base de datos, crea las tablas e inserta los datos de prueba antes de arrancar la app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Credenciales de prueba (contraseña: `123456` para todos)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Email | Rol |
+|---|---|
+| `admin@faciltrack.local` | ADMIN |
+| `jefe.mantenimiento.general@faciltrack.local` | STAFF |
+| `tecnico.mantenimiento.general@faciltrack.local` | TECNICO |
+| `jefe.electricidad@faciltrack.local` | STAFF |
+| `tecnico.electricidad@faciltrack.local` | TECNICO |
+| `jefe.plomeria@faciltrack.local` | STAFF |
+| `tecnico.plomeria@faciltrack.local` | TECNICO |
+| `jefe.limpieza@faciltrack.local` | STAFF |
+| `tecnico.limpieza@faciltrack.local` | TECNICO |
+| `jefe.infraestructura@faciltrack.local` | STAFF |
+| `tecnico.infraestructura@faciltrack.local` | TECNICO |
+| `jefe.tecnologia@faciltrack.local` | STAFF |
+| `tecnico.tecnologia@faciltrack.local` | TECNICO |
 
-## Learn More
+### Resetear la base de datos
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker compose down -v   # borra el volumen → DB vacía
+docker compose up        # re-seed automático al arrancar
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Desarrollo local (DB en Docker, app en local)
 
-## Deploy on Vercel
+Este es el modo recomendado para desarrollar: hot-reload nativo, sin reconstruir imagen.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# 1. Levantar solo MySQL
+docker compose up db -d
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# 2. Instalar dependencias
+npm install
+
+# 3. Copiar variables de entorno
+cp .env.example .env
+# Editar .env y completar AUTH_SECRET (ver .env.example)
+
+# 4. Sincronizar schema y seed
+npm run db:push
+npm run db:seed
+
+# 5. Servidor de desarrollo
+npm run dev
+```
+
+Abre http://localhost:3000.
+
+> **Nota:** `npm run dev` requiere que el contenedor `db` esté corriendo (`docker compose up db -d`). Si la DB no está disponible, Next.js mostrará un error `Can't reach database server at localhost:3307`.
+
+---
+
+## Stack tecnológico
+
+| Capa | Tecnología |
+|---|---|
+| Framework | Next.js 16.2.1 (App Router, Turbopack) |
+| Lenguaje | TypeScript 5 |
+| Base de datos | MySQL 8 (Docker) |
+| ORM | Prisma 6 |
+| Autenticación | NextAuth.js v5 beta |
+| Formularios | react-hook-form + Zod 4 |
+| UI | shadcn/ui + Tailwind CSS v4 |
+| Estado global | Zustand 5 |
+| Contenedores | Docker Compose |
+
+---
+
+## Scripts disponibles
+
+| Comando | Descripción |
+|---|---|
+| `npm run dev` | Servidor de desarrollo en `localhost:3000` |
+| `npm run build` | Build de producción |
+| `npm run start` | Servidor de producción (requiere build previo) |
+| `npm run db:push` | Sincronizar schema Prisma con la BD |
+| `npm run db:seed` | Insertar datos de prueba |
+| `npm run db:studio` | Abrir Prisma Studio (GUI visual de la BD) |
+| `npm run db:generate` | Regenerar el cliente Prisma |
+
+---
+
+## Documentación
+
+| Archivo | Contenido |
+|---|---|
+| [`Documentation/guia-inicio.md`](Documentation/guia-inicio.md) | Instalación detallada y configuración |
+| [`Documentation/arquitectura.md`](Documentation/arquitectura.md) | Stack, estructura de directorios, decisiones de diseño |
+| [`Documentation/base-de-datos.md`](Documentation/base-de-datos.md) | Schema, modelos y relaciones |
+| [`Documentation/autenticacion.md`](Documentation/autenticacion.md) | NextAuth v5, roles y middleware |
+| [`Documentation/api.md`](Documentation/api.md) | Referencia de endpoints |
+| [`Documentation/componentes.md`](Documentation/componentes.md) | Catálogo de componentes React |

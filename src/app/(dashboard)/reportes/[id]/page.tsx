@@ -48,23 +48,20 @@ export default async function ReporteDetallePage({
 
   if (isNaN(reporteId)) notFound();
 
-  const reporte = await getReporte(reporteId);
+  const [reporte, areas, userArea] = await Promise.all([
+    getReporte(reporteId),
+    prisma.area.findMany({ orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
+    session?.user?.areaId
+      ? prisma.area.findUnique({
+          where: { id: session.user.areaId },
+          select: { nombre: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
   if (!reporte) notFound();
 
-  // Resolve current user's area name for STAFF matching check
-  const userArea = session?.user?.areaId
-    ? await prisma.area.findUnique({
-        where: { id: session.user.areaId },
-        select: { nombre: true },
-      })
-    : null;
-
-  const evaluacion = reporte.evaluacion as {
-    limpieza: number;
-    seguridad: number;
-    iluminacion: boolean;
-    equipo: boolean;
-  } | null;
+  const evaluacion = reporte.evaluacion as Record<string, number> | null;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -125,7 +122,7 @@ export default async function ReporteDetallePage({
               <CardTitle className="text-base">Criterios de Evaluación</CardTitle>
             </CardHeader>
             <CardContent>
-              <EvaluacionChecklist evaluacion={evaluacion} />
+              <EvaluacionChecklist evaluacion={evaluacion} areas={areas} />
             </CardContent>
           </Card>
 
