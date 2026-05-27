@@ -1,5 +1,25 @@
 # Guía de Inicio
 
+## Inicio Rápido
+
+Un solo comando levanta todo el sistema (base de datos + aplicación + seed):
+
+```bash
+docker compose up --build
+```
+
+Abre **http://localhost:3000**. Usa cualquier credencial de la tabla de [credenciales de prueba](#credenciales-de-prueba).
+
+Para resetear completamente (borra todos los datos y vuelve a hacer seed):
+
+```bash
+docker compose down -v && docker compose up
+```
+
+> **Requisito único:** tener Docker instalado. No se necesita Node.js para este modo.
+
+---
+
 ## Requisitos previos
 
 - Docker y Docker Compose (requerido en ambos modos)

@@ -18,6 +18,33 @@
 | Exportación | xlsx (SheetJS) | 0.18.x |
 | Contenedores | Docker Compose | — |
 
+## Módulos del sistema
+
+El sistema está dividido en tres módulos de responsabilidad, cada uno desarrollado en su propia rama Git:
+
+### Módulo 1 — Registro de Incidencias (`rama: registro`)
+Formulario de inspección con validación completa:
+- **LocationPicker**: selector de ubicación en 3 pasos (tipo → edificio/bloque → espacio específico)
+- **EvaluacionSection**: carrusel de calificación 1–5 por área de responsabilidad, avance automático al seleccionar
+- **ComentariosSection**: campo de texto libre para observaciones del solicitante
+- Validación con `react-hook-form` + `zodResolver`; datos enviados a `POST /api/reportes`
+
+### Módulo 2 — Gestión Administrativa y Seguimiento (`rama: seguimiento`)
+Control del ciclo de vida de cada reporte:
+- **AsignarTareaModal**: asigna área responsable, personal y observaciones técnicas
+- Cambio de estado `PENDIENTE → EN_PROCESO → ATENDIDO` con timestamps automáticos
+- **BitacoraPanel**: historial de auditoría completo (solo visible para ADMIN)
+- Filtros por estado, tipo de ubicación y rango de fechas en la tabla del dashboard
+
+### Módulo 3 — Análisis y Gestión Estratégica (`rama: panel`)
+Métricas y exportación:
+- **StatsGrid**: conteos de reportes por estado en tiempo real
+- **DashboardClient**: tabla paginada y reactiva a filtros sin recarga de página
+- **ExportButton**: exporta reportes filtrados a Excel (`.xlsx`) con SheetJS
+- Página `/analiticas` con métricas por edificio y tiempo promedio de atención
+
+---
+
 ## Estructura de directorios
 
 ```
@@ -138,6 +165,88 @@ docker compose up
 ### Seed idempotente
 
 El seed verifica si ya existen usuarios antes de insertar datos. Esto permite reiniciar el contenedor sin perder datos, y también permite hacer `docker compose down -v && docker compose up` para un reset limpio.
+
+---
+
+## Flujo de peticiones HTTP
+
+### Rutas de API (`/api/*`) — bypass de middleware
+
+```
+Navegador
+  │ GET http://localhost:3000/api/reportes?page=1
+  ▼
+Docker port mapping 3000:3000
+  ▼
+Node.js (next start) — servidor HTTP dentro del contenedor
+  │
+  │ middleware.ts ← SKIP (matcher excluye /api/*)
+  │
+  ▼ src/app/api/reportes/route.ts → función GET()
+       ├── auth()          → verifica JWT en cookie (sin BD)   [src/lib/auth.ts]
+       ├── prisma.user.*   → consulta MySQL db:3306             [red interna Docker]
+       ├── prisma.reporte.*→ SELECT + COUNT en paralelo         [red interna Docker]
+       └── NextResponse.json({ data, total, page, pageSize })
+  ▼
+Navegador recibe JSON → React re-renderiza la tabla
+```
+
+### Rutas de página (`/dashboard`, `/reportes`, etc.) — pasan por middleware
+
+```
+Navegador
+  │ GET http://localhost:3000/dashboard
+  ▼
+middleware.ts
+  └── auth.config.ts → authorized()
+       ├── Sin sesión → redirect /login   (Edge Runtime, sin Node.js)
+       └── Con sesión → continúa
+  ▼
+src/app/layout.tsx           → ThemeProvider, fuentes (todas las rutas)
+src/app/(dashboard)/layout.tsx → segunda verificación auth(), Sidebar, Header
+src/app/(dashboard)/dashboard/page.tsx → Server Component con Prisma directo
+```
+
+**Por qué dos verificaciones de sesión:** `middleware.ts` corre en Edge Runtime (V8 sin Node.js completo), no puede usar Prisma ni bcrypt. El layout corre en Node.js con acceso completo y es la barrera definitiva.
+
+### Comunicación entre contenedores
+
+```
+Tu laptop (host)                  Red interna Docker
+────────────────                  ──────────────────────────────
+localhost:3000 ──────────────────▶ app:3000  (Node.js)
+                                       │
+localhost:3307 ──────────────────▶ db:3306   (MySQL)
+(solo para Prisma Studio)              ▲
+                                       │ db:3306 (nunca usa 3307)
+                                   app:3000 ──────────────────────┘
+```
+
+El contenedor `app` se conecta a MySQL usando `db:3306` directamente — Docker resuelve `db` mediante su DNS interno. El puerto `3307` solo existe en el host para herramientas externas (Prisma Studio, clientes MySQL).
+
+---
+
+## Estrategia de control de versiones
+
+El proyecto usa un flujo de ramas por módulo/equipo:
+
+```
+main          ← producción estable
+  └── Develop ← rama de integración (branch base para PRs)
+        ├── DB          ← schema Prisma, seed, migraciones
+        ├── registro    ← Módulo 1: formulario de inspección
+        ├── panel       ← Módulo 3: dashboard y analíticas
+        └── seguimiento ← Módulo 2: gestión y bitácora
+```
+
+Cada equipo trabajó en su rama y abrió un PR hacia `Develop`. Los merges en `Develop` están registrados en el historial:
+
+```
+merge(Develop): integrar seguimiento — asignación manual y bitácora
+merge(Develop): integrar panel — dashboard final, Personal, Edificios, Analíticas
+merge(Develop): integrar módulo de registro — formulario con LocationPicker
+merge(Develop): integrar sprint de BD — schema, roles, APIs de personal y middleware
+```
 
 ---
 
