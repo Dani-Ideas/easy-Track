@@ -91,10 +91,10 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-4 p-3 bg-muted rounded-lg text-xs text-muted-foreground space-y-1">
-            <p className="font-medium">Cuentas de prueba:</p>
-            <p>admin@faciltrack.local / admin123</p>
-            <p>staff@faciltrack.local / staff123</p>
-            <p>tecnico@faciltrack.local / tecnico123</p>
+            <p className="font-medium">Cuentas de prueba (contraseña: 123456):</p>
+            <p>admin@faciltrack.local</p>
+            <p>jefe.electricidad@faciltrack.local</p>
+            <p>tecnico.electricidad@faciltrack.local</p>
           </div>
         </CardContent>
       </Card>

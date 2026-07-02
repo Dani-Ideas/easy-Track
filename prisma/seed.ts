@@ -51,9 +51,14 @@ const DEFAULT_AREAS = [
 ];
 
 async function main() {
-  // ── Idempotencia: si ya hay usuarios, la DB ya fue inicializada ──────────────
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
+  // ── Idempotencia: se verifica la cuenta canónica de ESTE seed, no solo si
+  // existe "algún" usuario — así un volumen con datos de una versión anterior
+  // (emails/contraseñas distintos) se reconstruye solo en vez de quedar
+  // atascado con credenciales que no coinciden con las documentadas.
+  const seedActual = await prisma.user.findUnique({
+    where: { email: "admin@faciltrack.local" },
+  });
+  if (seedActual) {
     console.log("✅ Base de datos ya inicializada — seed omitido");
     return;
   }

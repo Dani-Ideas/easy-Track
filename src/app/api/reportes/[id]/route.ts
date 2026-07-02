@@ -34,7 +34,16 @@ export async function PATCH(
   const reporteId = parseInt(id);
   const body = await req.json();
 
-  // Capture before-state for audit log
+  const dbUser = session.user?.email
+    ? await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { role: true, area: { select: { id: true, nombre: true } } },
+      })
+    : null;
+  const userRole = dbUser?.role ?? session.user?.role;
+  const userAreaNombre = dbUser?.area?.nombre ?? null;
+
+  // Capture before-state for audit log and permission checks
   const prev = await prisma.reporte.findUnique({
     where: { id: reporteId },
     select: {
@@ -44,6 +53,51 @@ export async function PATCH(
       personalResponsable: { select: { nombre: true } },
     },
   });
+
+  // Mirrors the permission logic in EstadoSidebar.tsx — enforced here since the
+  // client-side checks can be bypassed by calling this endpoint directly.
+  const isAdmin = userRole === "ADMIN";
+  const isMatchingStaff =
+    userRole === "STAFF" &&
+    !!prev?.areaResponsable &&
+    !!userAreaNombre &&
+    prev.areaResponsable === userAreaNombre;
+  const isAssignedPerson =
+    !!body.usuarioReal &&
+    !!prev?.personalResponsable?.nombre &&
+    body.usuarioReal === prev.personalResponsable.nombre;
+
+  const forbidden = NextResponse.json({ error: "Prohibido" }, { status: 403 });
+
+  // PENDIENTE → EN_PROCESO (asignar área e iniciar atención): solo ADMIN
+  if (body.estado === "EN_PROCESO" && !isAdmin) return forbidden;
+
+  // EN_PROCESO → ATENDIDO: ADMIN, jefe del área asignada, o el responsable asignado
+  if (body.estado === "ATENDIDO" && !(isAdmin || isMatchingStaff || isAssignedPerson)) {
+    return forbidden;
+  }
+
+  // Cualquier otra transición de estado (ej. revertir) queda restringida a ADMIN
+  if (
+    body.estado !== undefined &&
+    body.estado !== "EN_PROCESO" &&
+    body.estado !== "ATENDIDO" &&
+    !isAdmin
+  ) {
+    return forbidden;
+  }
+
+  // Asignar/cambiar área responsable: solo ADMIN
+  if (body.areaResponsable !== undefined && !isAdmin) return forbidden;
+
+  // Asignar/cambiar responsable fuera del flujo de inicio: ADMIN o jefe del área
+  if (
+    body.personalResponsableId !== undefined &&
+    body.estado === undefined &&
+    !(isAdmin || isMatchingStaff)
+  ) {
+    return forbidden;
+  }
 
   const updateData: Record<string, unknown> = {};
 
@@ -70,10 +124,6 @@ export async function PATCH(
 
   // Build audit entries for every significant change
   if (session.user?.email) {
-    const dbUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { area: { select: { id: true } } },
-    });
     const ip         = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? null;
     const dispositivo = req.headers.get("user-agent") ?? null;
     const base = {
